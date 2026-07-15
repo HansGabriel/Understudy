@@ -1,0 +1,49 @@
+{
+  "mode": "replay",
+  "testCommand": "test",
+  "hiddenTestCommand": "test:challenge",
+  "id": "optimistic-rollback",
+  "title": "Optimistic completion with rollback",
+  "baseCommit": "49265dfdd4cfc76b064aa22877b4e8d8d0364f2d",
+  "referenceCommit": "9f27b6c7a0c92636f543f2d4874a4863d6624254",
+  "hiddenTestFile": "challenges/tests/optimistic-rollback.challenge.test.ts",
+  "difficulty": 3,
+  "estimatedTime": "20–30 min",
+  "learningObjectives": [
+    "optimistic UI",
+    "rollback",
+    "async failure"
+  ],
+  "brief": {
+    "desiredBehavior": "Complete a task immediately in the UI. If the save request fails, restore the task to its earlier state and surface the error.",
+    "acceptanceCriteria": [
+      "The UI updates immediately after completion.",
+      "A failed save restores the earlier task state.",
+      "The failure is visible to the user."
+    ],
+    "constraints": [
+      "Preserve existing behavior",
+      "Use the project's existing patterns"
+    ]
+  },
+  "planQuestions": [
+    "What behavior should change?",
+    "Where would you investigate first?",
+    "What failure or edge case should be tested?"
+  ],
+  "hints": [
+    {
+      "level": 1,
+      "text": "Consider what the UI should show if persistence fails."
+    },
+    {
+      "level": 2,
+      "text": "What state would you need to preserve before updating the task?"
+    },
+    {
+      "level": 3,
+      "text": "Look at the completion mutation in the task manager — something about the pre-update state matters there."
+    }
+  ],
+  "explainBackQuestion": "Why must the earlier task state be saved before an optimistic update?"
+}

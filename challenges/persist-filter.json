@@ -1,0 +1,49 @@
+{
+  "mode": "replay",
+  "testCommand": "test",
+  "hiddenTestCommand": "test:challenge",
+  "id": "persist-filter",
+  "title": "Persist task-filter preferences",
+  "baseCommit": "9f27b6c7a0c92636f543f2d4874a4863d6624254",
+  "referenceCommit": "4e314c14aeb8ffd8683b3eac937c8c2cb3b6c0ff",
+  "hiddenTestFile": "challenges/tests/persist-filter.challenge.test.ts",
+  "difficulty": 2,
+  "estimatedTime": "15–20 min",
+  "learningObjectives": [
+    "localStorage",
+    "validation",
+    "state persistence"
+  ],
+  "brief": {
+    "desiredBehavior": "Remember the active task filter across reloads, validating stored values before applying them.",
+    "acceptanceCriteria": [
+      "The selected filter survives a reload.",
+      "Invalid stored values safely fall back to the default.",
+      "Existing filtering behavior remains correct."
+    ],
+    "constraints": [
+      "Preserve existing behavior",
+      "Use browser storage defensively"
+    ]
+  },
+  "planQuestions": [
+    "What state should survive a reload?",
+    "Where would you initialize that state?",
+    "What stored value should be treated as invalid?"
+  ],
+  "hints": [
+    {
+      "level": 1,
+      "text": "Think about when a preference is read versus when it is written."
+    },
+    {
+      "level": 2,
+      "text": "What values should storage be allowed to restore?"
+    },
+    {
+      "level": 3,
+      "text": "Inspect the filter state initialization and selection method."
+    }
+  ],
+  "explainBackQuestion": "Why should a stored preference be validated before it changes the UI?"
+}
