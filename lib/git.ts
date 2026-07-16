@@ -3,8 +3,10 @@ import { existsSync, promises as fs } from "node:fs";
 import path from "node:path";
 import { promisify } from "node:util";
 import { assertFixtureAvailable, FixtureUnavailableError } from "@/lib/fixture";
-import { assertInside, fixtureBundlePath, fixtureRepoPath, runtimeRoot, sessionDirectory, sessionWorktreePath, sessionsRoot } from "@/lib/paths";
-import { installFixtureDependencies } from "@/lib/test-runner";
+import { getProject, linkedProjectPath } from "@/lib/projects";
+import { assertAbsoluteLocalPath, assertInside, fixtureBundlePath, fixtureRepoPath, runtimeRoot, sessionDirectory, sessionWorktreePath, sessionsRoot } from "@/lib/paths";
+import { installProjectDependencies } from "@/lib/test-runner";
+import { projectVariationDirectory } from "@/lib/project-cache";
 
 const execFile = promisify(execFileCallback);
 
@@ -19,7 +21,7 @@ export type ReferenceDiff = DiffDetails & {
   commit: string;
 };
 
-async function git(args: string[], cwd = runtimeRoot) {
+export async function git(args: string[], cwd = runtimeRoot) {
   try {
     const result = await execFile("git", args, { cwd, windowsHide: true, timeout: 120_000, maxBuffer: 2_000_000 });
     // Git can emit harmless line-ending and repository warnings on stderr. They
@@ -43,6 +45,7 @@ export async function ensureFixture(...requiredCommits: string[]) {
       } catch {
         throw new FixtureUnavailableError();
       }
+      await fetchVariationBundles(fixtureRepoPath);
       if ((await findMissingCommits(fixtureRepoPath, missingCommits)).length) {
         throw new FixtureUnavailableError();
       }
@@ -52,10 +55,24 @@ export async function ensureFixture(...requiredCommits: string[]) {
   assertFixtureAvailable();
   await fs.mkdir(runtimeRoot, { recursive: true });
   await git(["clone", fixtureBundlePath, fixtureRepoPath], runtimeRoot);
+  await fetchVariationBundles(fixtureRepoPath);
   if ((await findMissingCommits(fixtureRepoPath, requiredCommits)).length) {
     throw new FixtureUnavailableError();
   }
   return fixtureRepoPath;
+}
+
+async function fetchVariationBundles(fixture: string) {
+  try {
+    const directory = projectVariationDirectory("task-manager");
+    const entries = await fs.readdir(directory, { withFileTypes: true });
+    for (const entry of entries.filter((item) => item.isFile() && item.name.endsWith(".bundle"))) {
+      const bundle = path.join(directory, entry.name);
+      await git(["-C", fixture, "fetch", bundle, "refs/*:refs/*"]);
+    }
+  } catch {
+    // Generated variations are optional; the caller will report a missing commit if needed.
+  }
 }
 
 async function findMissingCommits(fixture: string, commits: string[]) {
@@ -70,28 +87,35 @@ async function findMissingCommits(fixture: string, commits: string[]) {
   return missing;
 }
 
-export async function createWorktree(sessionId: string, baseCommit: string) {
-  const fixture = await ensureFixture(baseCommit);
+export async function createWorktree(sessionId: string, baseCommit: string, projectId = "task-manager") {
+  const source = projectId === "task-manager"
+    ? await ensureFixture(baseCommit)
+    : linkedProjectPath(await getProject(projectId));
   const worktree = sessionWorktreePath(sessionId);
   const sessionDir = sessionDirectory(sessionId);
   assertInside(sessionsRoot, sessionDir);
   await fs.mkdir(sessionDir, { recursive: true });
   try {
-    await git(["-C", fixture, "worktree", "add", "--detach", worktree, baseCommit]);
-    await installFixtureDependencies(worktree);
+    await git(["-C", source, "worktree", "add", "--detach", worktree, baseCommit]);
+    await installProjectDependencies(worktree);
     return worktree;
   } catch (error) {
-    await removeWorktree(sessionId).catch(() => undefined);
+    await removeWorktree(sessionId, projectId).catch(() => undefined);
     throw error;
   }
 }
 
-export async function removeWorktree(sessionId: string) {
-  const fixture = await ensureFixture();
+export async function removeWorktree(sessionId: string, projectId = "task-manager") {
   const worktree = sessionWorktreePath(sessionId);
-  if (existsSync(worktree)) await git(["-C", fixture, "worktree", "remove", "--force", worktree]);
-  await git(["-C", fixture, "worktree", "prune"]);
-  await fs.rm(sessionDirectory(sessionId), { recursive: true, force: true });
+  try {
+    const source = projectId === "task-manager"
+      ? await ensureFixture()
+      : assertAbsoluteLocalPath(linkedProjectPath(await getProject(projectId)));
+    if (existsSync(worktree)) await git(["-C", source, "worktree", "remove", "--force", worktree]);
+    await git(["-C", source, "worktree", "prune"]);
+  } finally {
+    await fs.rm(sessionDirectory(sessionId), { recursive: true, force: true });
+  }
 }
 
 export async function diffSummary(worktreePath: string) {
@@ -125,8 +149,10 @@ export async function diffDetails(worktreePath: string): Promise<DiffDetails> {
   return { patch, files: fileList(names) };
 }
 
-export async function referenceDiff(baseCommit: string, referenceCommit: string): Promise<ReferenceDiff> {
-  const fixture = await ensureFixture(baseCommit, referenceCommit);
+export async function referenceDiff(baseCommit: string, referenceCommit: string, projectId = "task-manager"): Promise<ReferenceDiff> {
+  const fixture = projectId === "task-manager"
+    ? await ensureFixture(baseCommit, referenceCommit)
+    : assertAbsoluteLocalPath(linkedProjectPath(await getProject(projectId)));
   const [patch, names] = await Promise.all([
     git(["-C", fixture, "diff", "--no-ext-diff", "--unified=3", baseCommit, referenceCommit, "--"]),
     git(["-C", fixture, "diff", "--name-only", baseCommit, referenceCommit, "--"]),

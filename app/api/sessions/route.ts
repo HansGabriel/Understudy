@@ -9,9 +9,10 @@ import { sessionWorktreePath } from "@/lib/paths";
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
 
-function newSession(challengeId: string, worktreePath: string, explainBackQuestion: string): Omit<SessionRecord, "id" | "createdAt"> {
+function newSession(challengeId: string, projectId: string, worktreePath: string, explainBackQuestion: string): Omit<SessionRecord, "id" | "createdAt"> {
   return {
     challengeId,
+    projectId,
     worktreePath,
     status: "planning",
     plan: { answers: ["", "", ""], aiFeedback: "", aiSource: "authored", revisionCount: 0, confirmed: false },
@@ -21,6 +22,7 @@ function newSession(challengeId: string, worktreePath: string, explainBackQuesti
     reflection: "",
     reflectionSource: "authored",
     lastCoaching: null,
+    coachThread: [],
     timeline: [],
   };
 }
@@ -47,8 +49,8 @@ export async function POST(request: Request) {
     }
     const provisionalId = crypto.randomUUID();
     const worktreePath = sessionWorktreePath(provisionalId);
-    await createWorktree(provisionalId, challenge.baseCommit);
-    const session = await createSessionRecord({ ...newSession(challengeId, worktreePath, challenge.explainBackQuestion), id: provisionalId });
+    await createWorktree(provisionalId, challenge.baseCommit, challenge.projectId);
+    const session = await createSessionRecord({ ...newSession(challengeId, challenge.projectId, worktreePath, challenge.explainBackQuestion), id: provisionalId });
     return Response.json({ id: session.id, worktreePath: session.worktreePath }, { status: 201 });
   } catch (error) {
     return apiError(error);

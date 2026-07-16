@@ -12,7 +12,7 @@ export function ChallengeCard({ challenge, busy, onReplay, progress }: { challen
   return (
     <article className="card challenge-card">
       <div>
-        <span className="replay-tag">REPLAY</span>
+        <span className="replay-tag">REPLAY</span>{challenge.drafted ? <span className="chip draft-chip">AI-drafted</span> : null}
         <span className="chip" style={{ marginLeft: 8 }}>{challenge.tag}</span>
         <h2>{challenge.title}</h2>
         <p className="challenge-summary">{challenge.brief.desiredBehavior}</p>

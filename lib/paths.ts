@@ -3,6 +3,8 @@ import path from "node:path";
 export const projectRoot = process.cwd();
 export const runtimeRoot = path.resolve(projectRoot, "runtime");
 export const sessionsRoot = path.resolve(runtimeRoot, "sessions");
+export const projectsRegistryPath = path.resolve(runtimeRoot, "projects.json");
+export const projectsCacheRoot = path.resolve(runtimeRoot, "projects-cache");
 export const challengesRoot = path.resolve(projectRoot, "challenges");
 export const fixtureBundlePath = path.resolve(projectRoot, "fixtures", "task-manager.bundle");
 export const fixtureRepoPath = path.resolve(runtimeRoot, "task-manager");
@@ -17,6 +19,18 @@ export function assertInside(parent: string, candidate: string) {
     throw new Error("Unsafe filesystem path.");
   }
   return resolvedCandidate;
+}
+
+export function assertAbsoluteLocalPath(candidate: string) {
+  if (!path.isAbsolute(candidate) || /(^|[\\/])\.\.(?:[\\/]|$)/.test(candidate)) {
+    throw new Error("Unsafe project path. Use an absolute local repository path without traversal segments.");
+  }
+  return path.resolve(candidate);
+}
+
+export function projectCacheDirectory(projectId: string) {
+  if (!/^[a-z0-9-]+$/.test(projectId)) throw new Error("Unsafe project id.");
+  return assertInside(projectsCacheRoot, path.join(projectsCacheRoot, projectId));
 }
 
 export function sessionDirectory(sessionId: string) {

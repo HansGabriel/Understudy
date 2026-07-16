@@ -1,7 +1,8 @@
 "use client";
 
-import { useEffect, useState, type ReactNode } from "react";
+import { useEffect, useState, type FormEvent, type ReactNode } from "react";
 import Link from "next/link";
+import type { ProjectSummary } from "@/lib/schemas";
 
 type AppShellProps = {
   active: "library" | "session" | "report";
@@ -21,6 +22,9 @@ type RecentPayload = {
   total: number;
 };
 
+const defaultProject: ProjectSummary = { id: "task-manager", name: "task-manager", mode: "built-in", detected: { packageManager: "npm", testCommand: "test" }, consent: true };
+const selectedProjectStorageKey = "understudy:selected-project";
+
 const stageLabel = {
   library: "Choose a replay",
   session: "Practice in your working copy",
@@ -37,6 +41,37 @@ function formatSessionDate(value: string) {
 
 export function AppShell({ active, children }: AppShellProps) {
   const [recent, setRecent] = useState<RecentPayload>({ sessions: [], total: 0 });
+  const [projects, setProjects] = useState<ProjectSummary[]>([defaultProject]);
+  const [selectedProjectId, setSelectedProjectId] = useState(defaultProject.id);
+  const [projectPath, setProjectPath] = useState("");
+  const [projectError, setProjectError] = useState("");
+  const [projectBusy, setProjectBusy] = useState(false);
+  const [showProjectForm, setShowProjectForm] = useState(false);
+  const [projectConsent, setProjectConsent] = useState(false);
+
+  function selectProject(projectId: string, project?: ProjectSummary) {
+    setSelectedProjectId(projectId);
+    window.localStorage.setItem(selectedProjectStorageKey, projectId);
+    window.dispatchEvent(new CustomEvent("understudy:project-change", { detail: { projectId, project } }));
+  }
+
+  async function addProject(event: FormEvent<HTMLFormElement>) {
+    event.preventDefault();
+    setProjectBusy(true); setProjectError("");
+    try {
+      const response = await fetch("/api/projects", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ path: projectPath, consent: projectConsent }) });
+      const data = await response.json();
+      if (!response.ok) throw new Error(data.error ?? "Could not add this project.");
+      const project = data as ProjectSummary;
+      setProjects((current) => current.some((entry) => entry.id === project.id) ? current : [...current, project]);
+      setProjectPath("");
+      setProjectConsent(false);
+      setShowProjectForm(false);
+      selectProject(project.id, project);
+    } catch (reason) {
+      setProjectError(reason instanceof Error ? reason.message : "Could not add this project.");
+    } finally { setProjectBusy(false); }
+  }
 
   useEffect(() => {
     let cancelled = false;
@@ -51,6 +86,25 @@ export function AppShell({ active, children }: AppShellProps) {
     return () => {
       cancelled = true;
     };
+  }, []);
+
+  useEffect(() => {
+    let cancelled = false;
+    fetch("/api/projects", { cache: "no-store" })
+      .then(async (response) => (response.ok ? response.json() : Promise.reject(await response.json())))
+      .then((data: ProjectSummary[]) => {
+        if (cancelled) return;
+        const nextProjects = data.length ? data : [defaultProject];
+        setProjects(nextProjects);
+        const saved = window.localStorage.getItem(selectedProjectStorageKey);
+        const nextId = saved && nextProjects.some((project) => project.id === saved) ? saved : defaultProject.id;
+        setSelectedProjectId(nextId);
+        window.dispatchEvent(new CustomEvent("understudy:project-change", { detail: { projectId: nextId } }));
+      })
+      .catch(() => {
+        // The bundled project remains usable if the registry is unavailable.
+      });
+    return () => { cancelled = true; };
   }, []);
 
   return (
@@ -70,12 +124,13 @@ export function AppShell({ active, children }: AppShellProps) {
           <aside className="sidebar">
             <div>
               <p className="eyebrow">Practice project</p>
-              <div className="project-select"><strong>task-manager</strong><span>bundled practice project</span></div>
-              <p className="fixture-note">Understudy is the coach. task-manager is the project you&apos;re improving, in a copy on your own disk.</p>
-              <button className="project-roadmap" type="button" disabled>
-                <strong>Load a different project</strong>
-                <span>This MVP ships one practice project. Adding your own repository is next on the roadmap.</span>
+              <div className="project-select"><label htmlFor="project-picker">Practice project</label><select id="project-picker" value={selectedProjectId} onChange={(event) => selectProject(event.target.value)}>{projects.map((project) => <option value={project.id} key={project.id}>{project.name}</option>)}</select><span>{projects.find((project) => project.id === selectedProjectId)?.mode === "linked" ? "linked local repository" : "bundled practice project"}</span></div>
+              <p className="fixture-note">Understudy is the coach. The selected project is improved in a copy on your own disk.</p>
+              <button className="project-roadmap" type="button" onClick={() => { setShowProjectForm((open) => !open); setProjectError(""); }}>
+                <strong>{showProjectForm ? "Close project loader" : "Load a different project"}</strong>
+                <span>Add a local npm + Vitest/Jest repository for the project library.</span>
               </button>
+              {showProjectForm ? <form className="project-import" onSubmit={addProject}><label htmlFor="project-path">Absolute local repository path</label><input id="project-path" value={projectPath} onChange={(event) => setProjectPath(event.target.value)} placeholder="C:\\work\\my-repo" autoComplete="off" /><label className="consent-check"><input type="checkbox" checked={projectConsent} onChange={(event) => setProjectConsent(event.target.checked)} required /> <span>I understand replays run this repository&apos;s own tests on my machine.</span></label>{projectError ? <small>{projectError}</small> : null}<button className="button secondary small" disabled={projectBusy || projectPath.trim().length < 1 || !projectConsent}>{projectBusy ? "Checking..." : "Add project"}</button></form> : null}
             </div>
             <div>
               <p className="eyebrow">Learning loop</p>

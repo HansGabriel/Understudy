@@ -17,7 +17,7 @@ export async function GET() {
     return Response.json({
       session: fixture.session,
       challenge: toPublicChallenge(challenge),
-      recommendedChallenge: await recommendNextChallenge([fixture.session.challengeId]),
+      recommendedChallenge: await recommendNextChallenge([fixture.session.challengeId], fixture.session.projectId),
       diff: fixture.diff,
       learnerDiff: fixture.learnerDiff,
       referenceDiff: fixture.referenceDiff,

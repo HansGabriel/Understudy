@@ -59,14 +59,27 @@ export function assertAllowedScript(scriptName: string): asserts scriptName is "
 }
 
 export async function runScript(worktreePath: string, scriptName: string) {
-  assertAllowedScript(scriptName);
-  return summarize(await runNpm(worktreePath, ["run", scriptName]));
+  return runScriptWithArgs(worktreePath, scriptName, []);
 }
 
-export async function installFixtureDependencies(worktreePath: string) {
-  const result = await runNpm(worktreePath, ["ci", "--ignore-scripts", "--no-audit", "--no-fund"]);
-  if (!result.passed) throw new Error(`Fixture dependency installation failed.\n${result.output}`);
+export async function runScriptWithArgs(worktreePath: string, scriptName: string, args: string[]) {
+  assertAllowedScript(scriptName);
+  const safeArgs = args.map((argument) => {
+    const normalized = argument.replace(/\\/g, "/");
+    if (!normalized || normalized.startsWith("/") || normalized.split("/").some((part) => part === ".." || part === "")) {
+      throw new Error("Unsafe test path.");
+    }
+    return normalized;
+  });
+  return summarize(await runNpm(worktreePath, ["run", scriptName, ...(safeArgs.length ? ["--", ...safeArgs] : [])]));
 }
+
+export async function installProjectDependencies(worktreePath: string) {
+  const result = await runNpm(worktreePath, ["ci", "--ignore-scripts", "--no-audit", "--no-fund"]);
+  if (!result.passed) throw new Error(`Project dependency installation failed.\n${result.output}`);
+}
+
+export const installFixtureDependencies = installProjectDependencies;
 
 export async function runHiddenTest(worktreePath: string, sourceTestFile: string) {
   const testsDirectory = path.resolve(worktreePath, "tests");
@@ -79,5 +92,30 @@ export async function runHiddenTest(worktreePath: string, sourceTestFile: string
     return await runScript(worktreePath, "test:challenge");
   } finally {
     await fs.rm(destination, { force: true });
+  }
+}
+
+export async function runHiddenTestFiles(worktreePath: string, sourceTestFiles: Array<{ source: string; relativePath: string }>, scriptName = "test") {
+  const backups = new Map<string, Buffer | null>();
+  const destinations: string[] = [];
+  try {
+    for (const entry of sourceTestFiles) {
+      const normalized = entry.relativePath.replace(/\\/g, "/");
+      if (!normalized || normalized.startsWith("/") || normalized.split("/").some((part) => part === ".." || part === "")) throw new Error("Unsafe hidden test path.");
+      const destination = path.resolve(worktreePath, normalized);
+      const relative = path.relative(worktreePath, destination);
+      if (relative.startsWith("..") || path.isAbsolute(relative)) throw new Error("Unsafe hidden test destination.");
+      await fs.mkdir(path.dirname(destination), { recursive: true });
+      backups.set(destination, existsSync(destination) ? await fs.readFile(destination) : null);
+      await fs.copyFile(entry.source, destination);
+      destinations.push(destination);
+    }
+    return await runScriptWithArgs(worktreePath, scriptName, sourceTestFiles.map((entry) => entry.relativePath));
+  } finally {
+    for (const destination of destinations) {
+      const backup = backups.get(destination);
+      if (backup) await fs.writeFile(destination, backup);
+      else await fs.rm(destination, { force: true });
+    }
   }
 }

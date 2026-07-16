@@ -18,13 +18,13 @@ export async function GET(_request: Request, context: RouteContext<"/api/session
       getChallenge(session.challengeId),
       listSessions(),
     ]);
-    const recommendedChallenge = await recommendNextChallenge(sessions.filter((item) => item.status === "completed").map((item) => item.challengeId));
+    const recommendedChallenge = await recommendNextChallenge(sessions.filter((item) => item.status === "completed" && item.projectId === session.projectId).map((item) => item.challengeId), session.projectId);
     if (session.status !== "completed") {
       return Response.json({ session, canOpenInVSCode, diff, recommendedChallenge, challenge: { ...toPublicChallenge(challenge), planQuestions: challenge.planQuestions } });
     }
 
     const [reference, learner] = await Promise.all([
-      referenceDiff(challenge.baseCommit, challenge.referenceCommit).catch(() => ({
+      referenceDiff(challenge.baseCommit, challenge.referenceCommit, session.projectId).catch(() => ({
         commit: challenge.referenceCommit,
         patch: "Reference implementation unavailable. Run npm run fixture:build to restore it.",
         files: [],

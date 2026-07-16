@@ -14,6 +14,7 @@ function testSession(id: string): SessionRecord {
   return {
     id,
     challengeId: "optimistic-rollback",
+    projectId: "task-manager",
     createdAt: new Date().toISOString(),
     worktreePath: `runtime/sessions/${id}/worktree`,
     status: "planning",
@@ -23,6 +24,7 @@ function testSession(id: string): SessionRecord {
     explainBack: { question: "Why?", answer: "", aiFeedback: "" },
     reflection: "",
     timeline: [],
+    coachThread: [],
   };
 }
 

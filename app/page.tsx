@@ -5,7 +5,9 @@ import { useRouter } from "next/navigation";
 import Link from "next/link";
 import { AppShell } from "@/components/app-shell";
 import { ChallengeCard, type ChallengeProgress } from "@/components/challenge-card";
-import type { PublicChallenge } from "@/lib/schemas";
+import { CommitPicker } from "@/components/commit-picker";
+import { VariationForge } from "@/components/variation-forge";
+import type { ProjectSummary, PublicChallenge } from "@/lib/schemas";
 
 const comingSoon = [
   {
@@ -25,6 +27,9 @@ type RecentPayload = {
   challengeStates?: Record<string, ChallengeProgress>;
 };
 
+const selectedProjectStorageKey = "understudy:selected-project";
+const defaultProject: ProjectSummary = { id: "task-manager", name: "task-manager", mode: "built-in", detected: { packageManager: "npm", testCommand: "test" }, consent: true };
+
 export default function LibraryPage() {
   const router = useRouter();
   const [challenges, setChallenges] = useState<PublicChallenge[]>([]);
@@ -32,11 +37,17 @@ export default function LibraryPage() {
   const [busy, setBusy] = useState("");
   const [challengeProgress, setChallengeProgress] = useState<Record<string, ChallengeProgress>>({});
   const [hasSessions, setHasSessions] = useState(false);
+  const [projects, setProjects] = useState<ProjectSummary[]>([defaultProject]);
+  const [selectedProjectId, setSelectedProjectId] = useState(defaultProject.id);
   const fixtureUnavailable = /fixture|fixture:build/i.test(error);
-  const entries: LibraryEntry[] = challenges.length
+  const selectedProject = projects.find((project) => project.id === selectedProjectId) ?? defaultProject;
+  const isLinkedProject = selectedProject.mode === "linked";
+  const visibleChallenges = challenges.filter((challenge) => challenge.projectId === selectedProjectId);
+  const baseChallengeForForge = visibleChallenges.find((challenge) => !challenge.drafted && !challenge.id.startsWith("variation-"));
+  const entries: LibraryEntry[] = visibleChallenges.length
     ? [
-        ...challenges.map((challenge) => ({ kind: "challenge" as const, challenge })),
-        ...comingSoon.map((entry) => ({ kind: "coming-soon" as const, ...entry })),
+        ...visibleChallenges.map((challenge) => ({ kind: "challenge" as const, challenge })),
+        ...(selectedProject.mode === "built-in" ? comingSoon.map((entry) => ({ kind: "coming-soon" as const, ...entry })) : []),
       ]
     : [];
 
@@ -56,7 +67,23 @@ export default function LibraryPage() {
       .catch(() => {
         // Progress is additive; the library remains usable if the local index is unavailable.
       });
-    return () => { cancelled = true; };
+    const savedProject = window.localStorage.getItem(selectedProjectStorageKey);
+    const handleProjectChange = (event: Event) => {
+      const detail = (event as CustomEvent<{ projectId?: string; project?: ProjectSummary }>).detail;
+      if (detail?.project) setProjects((current) => current.some((project) => project.id === detail.project?.id) ? current : [...current, detail.project!]);
+      if (detail?.projectId) setSelectedProjectId(detail.projectId);
+    };
+    const loadProjects = async () => {
+      const response = await fetch("/api/projects", { cache: "no-store" });
+      const data = await response.json();
+      if (!response.ok) return;
+      const nextProjects = data as ProjectSummary[];
+      setProjects(nextProjects.length ? nextProjects : [defaultProject]);
+      setSelectedProjectId(savedProject && nextProjects.some((project) => project.id === savedProject) ? savedProject : defaultProject.id);
+    };
+    window.addEventListener("understudy:project-change", handleProjectChange);
+    void loadProjects();
+    return () => { cancelled = true; window.removeEventListener("understudy:project-change", handleProjectChange); };
   }, []);
 
   async function replay(challengeId: string) {
@@ -85,10 +112,20 @@ export default function LibraryPage() {
     }
   }
 
+  function renderEntry(entry: LibraryEntry) {
+    return entry.kind === "challenge"
+      ? <ChallengeCard key={entry.challenge.id} challenge={entry.challenge} progress={challengeProgress[entry.challenge.id]} busy={busy === entry.challenge.id} onReplay={replay} />
+      : <article className="coming-soon" key={entry.id}><span className="replay-tag">IN AUTHORING</span><h2>{entry.title}</h2><p>{entry.description}</p><div className="chip-row">{entry.tags.map((tag) => <span className="chip" key={tag}>{tag}</span>)}</div></article>;
+  }
+
+  function handleDraftedChallenge(challenge: PublicChallenge) {
+    setChallenges((current) => current.some((entry) => entry.id === challenge.id) ? current.map((entry) => entry.id === challenge.id ? challenge : entry) : [...current, challenge]);
+  }
+
   return (
     <AppShell active="library">
       <header className="page-head library-head">
-        <div><p className="eyebrow">One practice project / two real changes</p><h1>Learn from real history: Understudy drops you at the commit before a meaningful change and asks you to rebuild it yourself.</h1><p>A replay is a guided chance to rebuild a real change from this project&apos;s history. You make the change in your own editor; the project&apos;s tests show when the behavior is right.</p></div>
+        <div><p className="eyebrow">{selectedProject.id === "task-manager" ? "One practice project / two real changes" : `${selectedProject.name} / project library preview`}</p><h1>Learn from real history: Understudy drops you at the commit before a meaningful change and asks you to rebuild it yourself.</h1><p>A replay is a guided chance to rebuild a real change from this project&apos;s history. You make the change in your own editor; the project&apos;s tests show when the behavior is right.</p></div>
       </header>
       <section className="page-content">
         {!hasSessions ? <section className="how-it-works" aria-labelledby="how-it-works-title">
@@ -99,7 +136,10 @@ export default function LibraryPage() {
             <li><span>3</span><p><strong>Prove the behavior.</strong> Run the tests, use coaching if useful, and explain your reasoning.</p></li>
           </ol>
         </section> : null}
-        {fixtureUnavailable ? <article className="card setup-card">
+        {isLinkedProject ? <>
+          <CommitPicker projectId={selectedProject.id} onChallengeCreated={handleDraftedChallenge} />
+          {entries.length ? entries.map(renderEntry) : <article className="card setup-card project-empty-state"><p className="eyebrow">Project library</p><h2>No drafted challenges yet.</h2><p>Create a replay from a self-validating commit above. The saved draft will appear here for practice.</p></article>}
+        </> : fixtureUnavailable ? <article className="card setup-card">
           <p className="eyebrow">Local setup required</p>
           <h2>Build the task-manager fixture before practicing.</h2>
           <p>{error}</p>
@@ -108,11 +148,12 @@ export default function LibraryPage() {
           <p className="eyebrow">Could not load the replay library</p>
           <h2>Try refreshing the local app.</h2>
           <p>{error}</p>
-        </article> : entries.length ? entries.map((entry) => entry.kind === "challenge"
+        </article> : selectedProject.mode === "linked" ? <article className="card setup-card project-empty-state"><p className="eyebrow">Stage B preview</p><h2>No challenges yet — pick a commit to replay</h2><p>This repository is registered and ready for the next project-library step. Commit discovery is intentionally not included in this pass.</p></article> : entries.length ? entries.map((entry) => entry.kind === "challenge"
           ? <ChallengeCard key={entry.challenge.id} challenge={entry.challenge} progress={challengeProgress[entry.challenge.id]} busy={busy === entry.challenge.id} onReplay={replay} />
           : <article className="coming-soon" key={entry.id}><span className="replay-tag">IN AUTHORING</span><h2>{entry.title}</h2><p>{entry.description}</p><div className="chip-row">{entry.tags.map((tag) => <span className="chip" key={tag}>{tag}</span>)}</div></article>)
           : <article className="card challenge-card"><div><p className="eyebrow">Loading local challenge manifests</p><h2>Preparing the replay library</h2><p>Checking the public manifest data while reference commits remain server-only.</p></div></article>}
         <p className="sample-report-link"><Link href="/report/sample">View a sample mastery report</Link></p>
+        {selectedProject.id === "task-manager" && baseChallengeForForge ? <VariationForge challengeId={baseChallengeForForge.id} baseChallenges={visibleChallenges.filter((challenge) => !challenge.drafted && !challenge.id.startsWith("variation-"))} onCreated={handleDraftedChallenge} /> : null}
       </section>
     </AppShell>
   );

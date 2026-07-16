@@ -1,10 +1,17 @@
 import type { Metadata } from "next";
-import { IBM_Plex_Mono, IBM_Plex_Sans, Space_Grotesk } from "next/font/google";
+import localFont from "next/font/local";
 import "./globals.css";
 
-const display = Space_Grotesk({ variable: "--font-display", subsets: ["latin"] });
-const body = IBM_Plex_Sans({ variable: "--font-body", subsets: ["latin"], weight: ["400", "500", "600", "700"] });
-const mono = IBM_Plex_Mono({ variable: "--font-mono", subsets: ["latin"], weight: ["400", "500", "600"] });
+const display = localFont({ src: "./fonts/space-grotesk-latin.woff2", variable: "--font-display", weight: "300 700", style: "normal" });
+const body = localFont({ src: "./fonts/ibm-plex-sans-latin.woff2", variable: "--font-body", weight: "400 700", style: "normal" });
+const mono = localFont({
+  src: [
+    { path: "./fonts/ibm-plex-mono-400.woff2", weight: "400", style: "normal" },
+    { path: "./fonts/ibm-plex-mono-500.woff2", weight: "500", style: "normal" },
+    { path: "./fonts/ibm-plex-mono-600.woff2", weight: "600", style: "normal" },
+  ],
+  variable: "--font-mono",
+});
 
 export const metadata: Metadata = {
   title: "Understudy — guided git replay practice",

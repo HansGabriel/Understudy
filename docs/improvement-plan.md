@@ -98,16 +98,51 @@ From first real walkthrough of the full loop. Split into now vs roadmap:
 
 ---
 
+## Phase 1.75 — Coach panel (OPTIONAL pre-deadline; build ONLY after the demo video script and the macOS/Linux run-through are done)
+
+An in-session conversational coach — a teacher, not an answer machine. This is an *extension of the hint ladder*, not a free chat. Three facts make it safe and cheap: the model never receives the reference patch (it cannot leak the solution), the guardrail pattern in `lib/ai.ts` (structured output + accept validators + authored fallbacks) extends directly, and every exchange is logged into the Independence signal.
+
+**Server:**
+- New route `POST /api/sessions/[id]/coach` with `{ message: string }` (Zod: trim, min 3, max 600).
+- New `coachMessage()` in `lib/ai.ts`, same pattern as the four existing coaching functions: Responses API, structured Zod output, 8s timeout, authored fallback, `accept` validator.
+- Grounding context (and nothing more): challenge brief, plan answers, revealed hints, latest attempt's test-output summary, session status, and the thread so far. **Never learner source code, never the reference commit/patch** — same boundary as today, restated in the system prompt.
+- **Escalation policy enforced in the prompt AND the accept validator** (defense in depth, mirroring plan/confirm):
+  - Always allowed: concepts, questions back, restating what the failing check observed.
+  - Pseudocode: only if hint L2 is revealed OR ≥2 failed verify attempts.
+  - Partial solution shape (a few lines, never a full patch): only if hint L3 is revealed.
+  - After `completed`: unrestricted — the reference is already revealed; the coach may discuss it (pass the reference diff into context ONLY in this state).
+  - Accept validator: pre-completion, reject responses containing code fences over 5 lines, full function bodies, or file-path + line prescriptions (reuse/extend `isSafeCoachingText`).
+- **Rationing:** cap the thread at 12 learner messages per session; the UI shows "coach messages: N of 12". Keeps it a deliberate resource, consistent with the product thesis.
+- Schema: `coachThread: z.array(z.object({ role: z.enum(["learner","coach"]), text, at, source: coachingSourceSchema.optional() })).default([])` on the session record; timeline event type `"coach"` per exchange.
+- No API key → authored fallback: "The coach needs an OPENAI_API_KEY. The hint ladder still works fully."
+
+**UI:**
+- "Coach" card in the session right column beneath the HintPanel: thread, input, send; header states the contract — "Guides your thinking. Never writes your patch. Every message is part of your report."
+- Report: Independence panel gains a "coach messages" row; the timeline shows coach beats.
+
+**Tests:** schema round-trip with a thread; escalation gating (pseudocode blocked before L2, allowed after); message cap enforced; public projection still leaks nothing pre-completion; accept-validator rejection falls back to authored text.
+
+**Demo value:** this is the most visible GPT-5.6 surface in the product — show one exchange in the video where the coach asks a question back instead of answering.
+
+---
+
 ## Phase 4 — Post-hackathon roadmap (the "extendable for future use" part)
 
 In order of leverage, each building on the last:
 
-1. **Project library.** `projects/<id>/{repository, challenges}` layout; sidebar becomes a real selector; `task-manager` becomes the built-in example. All current session/replay machinery is reused per-project — this is why 3.5 matters.
-2. **Challenge authoring kit.** A CLI (`understudy author`) that walks a maintainer through: pick base + reference commits → write brief/hints/explain-back → generate the manifest → run the existing validator (fails at base, passes at reference, passes an alternate implementation). The validator already exists; the kit packages it.
-3. **Commit discovery.** Scan a repo's history and *suggest* replay candidates (small, well-tested, single-purpose commits). Suggestion only — authoring stays human + validated.
+1. **Bring-your-own-repo replay (project library + import).** The detailed spec:
+   - **Registry:** `runtime/projects.json` (or `projects/<id>/config.json`): id, display name, mode `linked` (absolute path to a local repo) or `cloned` (git URL cloned under `runtime/projects/<id>`), detected package manager + test command from `package.json`. Reuse `assertInside`-style path guards; `projectId` threads through paths (the Phase 3.5 seam) so `task-manager` becomes just the built-in project.
+   - **v1 support gate:** git repo + npm + Vitest/Jest detected, else a friendly "not yet supported" card. State it in the UI.
+   - **Commit picker — prioritize self-validating commits.** Scan recent history for commits that ADD test files: run the added tests against the parent commit — if they fail there and pass at the commit, the challenge validates itself (fail-at-base / pass-at-reference, computed automatically). List those first as "replayable"; other commits get a "no automatic edge-case check" badge and use the repo's whole suite as the only check.
+   - **AI drafting (GPT-5.6):** generate brief, 3 plan questions, 3 leveled hints, explain-back question from the commit message + diff stat (NOT the full patch — keep the reveal meaningful). Manifest saved per-project; user can edit before first use. Badge AI-drafted challenges as such.
+   - **Safety:** running an imported repo's tests executes that repo's code — require an explicit one-time consent notice per project; keep `--ignore-scripts` installs and the script allowlist pattern.
+   - **Reuse everything:** sessions, worktrees, hint ladder, coach, report, reveal — all existing machinery, keyed by projectId.
+2. **Task generation ("Forge-lite", builds on #1's validator).** Two tiers:
+   - **Variations:** GPT-5.6 proposes a variation of an existing validated challenge (e.g. rollback → retry-with-backoff). A private validation run must produce a reference implementation that passes a generated behavioral test which fails at base — only then is the challenge published to the library. No validation pass → never shown.
+   - **From-scratch generation** stays behind the same gate. The gate is the feature; an unvalidated generated task is worse than no task.
+3. **Challenge authoring kit.** A CLI (`understudy author`) packaging the existing validator (fails at base, passes at reference, passes an alternate implementation) for human authors.
 4. **Fixture with a real UI.** Re-author the bundled fixture as a tiny web app so briefs can show actual screens and UI-flavored challenges become possible. (Deliberately rejected pre-deadline: requires regenerating fixture history and re-validating everything.)
-5. **AI Forge.** Generate novel challenges, validated the same way (private reference attempt must pass the hidden tests before a challenge is published). Kept out of the MVP on purpose; the validation pipeline from #2 is the prerequisite.
-6. **Multi-language runners.** Adapter interface over `lib/test-runner.ts` (npm/Vitest today; pytest, go test later). The manifest already declares its commands, so this is mostly runner plumbing.
+5. **Multi-language runners.** Adapter interface over `lib/test-runner.ts` (npm/Vitest today; pytest, go test later). The manifest already declares its commands, so this is mostly runner plumbing.
 
 ---
 

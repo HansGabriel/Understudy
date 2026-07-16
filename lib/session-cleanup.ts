@@ -13,7 +13,7 @@ export async function discardSession(sessionId: string, options: DiscardOptions 
     if (options.onlyIfStatus && !options.onlyIfStatus.includes(session.status)) return null;
     assertInside(sessionsRoot, sessionDirectory(sessionId));
     assertInside(sessionsRoot, session.worktreePath);
-    await removeWorktree(sessionId);
+    await removeWorktree(sessionId, session.projectId);
     await deleteSessionRecord(sessionId);
     return session;
   });

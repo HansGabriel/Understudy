@@ -3,6 +3,8 @@ import path from "node:path";
 import { challengeSchema, publicChallengeSchema, type Challenge, type PublicChallenge } from "@/lib/schemas";
 import { challengesRoot } from "@/lib/paths";
 import { assertFixtureAvailable } from "@/lib/fixture";
+import { listProjects } from "@/lib/projects";
+import { listLinkedChallenges } from "@/lib/project-cache";
 
 const tags: Record<string, string> = {
   "optimistic-rollback": "async · error handling",
@@ -11,15 +13,22 @@ const tags: Record<string, string> = {
 
 export async function listChallenges(): Promise<Challenge[]> {
   const entries = await fs.readdir(challengesRoot, { withFileTypes: true });
-  const manifests = await Promise.all(
+  const manifests = (await Promise.all(
     entries
       .filter((entry) => entry.isFile() && entry.name.endsWith(".json"))
       .map(async (entry) => {
-        const raw = await fs.readFile(path.join(challengesRoot, entry.name), "utf8");
-        return challengeSchema.parse(JSON.parse(raw));
+        try {
+          const raw = await fs.readFile(path.join(challengesRoot, entry.name), "utf8");
+          return challengeSchema.parse(JSON.parse(raw));
+        } catch (error) {
+          console.warn(`Understudy: skipping invalid built-in challenge ${entry.name}.`, error);
+          return null;
+        }
       }),
-  );
-  return manifests.sort((a, b) => a.id.localeCompare(b.id));
+  )).filter((challenge): challenge is Challenge => challenge !== null);
+  const projectIds = ["task-manager", ...(await listProjects()).filter((project) => project.mode === "linked").map((project) => project.id)];
+  const generated = await Promise.all([...new Set(projectIds)].map((projectId) => listLinkedChallenges(projectId)));
+  return [...manifests, ...generated.flat()].sort((a, b) => a.id.localeCompare(b.id));
 }
 
 export async function getChallenge(id: string): Promise<Challenge> {
@@ -31,6 +40,9 @@ export async function getChallenge(id: string): Promise<Challenge> {
 export function toPublicChallenge(challenge: Challenge): PublicChallenge {
   return publicChallengeSchema.parse({
     id: challenge.id,
+    projectId: challenge.projectId,
+    drafted: challenge.drafted,
+    behavioralCheck: challenge.behavioralCheck,
     mode: challenge.mode,
     title: challenge.title,
     difficulty: challenge.difficulty,
@@ -46,10 +58,10 @@ export async function listPublicChallenges() {
   return (await listChallenges()).map(toPublicChallenge);
 }
 
-export async function recommendNextChallenge(completedChallengeIds: Iterable<string>) {
+export async function recommendNextChallenge(completedChallengeIds: Iterable<string>, projectId = "task-manager") {
   const completed = new Set(completedChallengeIds);
   const next = (await listChallenges())
-    .filter((challenge) => !completed.has(challenge.id))
+    .filter((challenge) => challenge.projectId === projectId && !completed.has(challenge.id) && (challenge.projectId === "task-manager" ? !challenge.drafted : challenge.drafted))
     .sort((left, right) => left.difficulty - right.difficulty || left.id.localeCompare(right.id))[0];
   return next ? toPublicChallenge(next) : null;
 }

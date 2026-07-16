@@ -7,6 +7,7 @@ const copy: Record<SessionRecord["timeline"][number]["type"], string> = {
   hint: "Hint requested",
   all_passed: "All checks passed",
   explained: "Explanation completed",
+  coach: "Coach exchange",
 };
 
 export function SessionTimeline({ session }: { session: SessionRecord }) {
@@ -21,7 +22,7 @@ export function SessionTimeline({ session }: { session: SessionRecord }) {
             <article className={`timeline-event ${signal ? "signal" : pass ? "pass" : ""}`} key={`${event.at}-${index}`}>
               <time className="timeline-time">{new Date(event.at).toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" })}</time>
               <h3>{copy[event.type]}</h3>
-              <p>{event.type === "signal_failure" ? "The normal suite passed, but the behavioral test found the edge case that the first attempt missed." : event.type === "hint" ? `Level ${event.meta.level} was revealed deliberately.` : event.type === "all_passed" ? "Normal suite and behavioral test are green together." : event.type === "attempt" ? "Checks captured an honest snapshot of the worktree." : event.type === "plan_submitted" ? "Three planning answers were recorded before coding." : "Explain-back captured and reviewed."}</p>
+              <p>{event.type === "signal_failure" ? "The normal suite passed, but the behavioral test found the edge case that the first attempt missed." : event.type === "hint" ? `Level ${event.meta.level} was revealed deliberately.` : event.type === "all_passed" ? "Normal suite and behavioral test are green together." : event.type === "attempt" ? "Checks captured an honest snapshot of the worktree." : event.type === "plan_submitted" ? "Three planning answers were recorded before coding." : event.type === "coach" ? `Coach exchange ${event.meta.messageCount ?? "recorded"}; help used is context, not a penalty.` : "Explain-back captured and reviewed."}</p>
               {signal && <div className="event-detail">{String(event.meta.assertion ?? "Behavioral edge case failed")}</div>}
             </article>
           );

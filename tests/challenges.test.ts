@@ -1,11 +1,13 @@
 import { randomUUID } from "node:crypto";
 import { promises as fs } from "node:fs";
+import path from "node:path";
 import { describe, expect, it, vi } from "vitest";
 import { listChallenges, listPublicChallenges, recommendNextChallenge } from "@/lib/challenges";
 import { sessionDirectory, sessionWorktreePath } from "@/lib/paths";
 import { loadSession, saveSession } from "@/lib/sessions";
-import type { SessionRecord } from "@/lib/schemas";
+import { challengeSchema, sessionSchema, type SessionRecord } from "@/lib/schemas";
 import { referenceDiff } from "@/lib/git";
+import { projectChallengesDirectory } from "@/lib/project-cache";
 
 vi.mock("@/lib/git", () => ({
   canOpenVSCode: vi.fn(async () => false),
@@ -20,11 +22,23 @@ import { GET as getSession } from "@/app/api/sessions/[id]/route";
 import { POST as createSession } from "@/app/api/sessions/route";
 
 describe("challenge projection", () => {
+  it("skips a corrupt linked-cache manifest without hiding built-in challenges", async () => {
+    const directory = projectChallengesDirectory("task-manager");
+    const corruptPath = path.join(directory, "corrupt-review-manifest.json");
+    await fs.mkdir(directory, { recursive: true });
+    await fs.writeFile(corruptPath, "{not-json", "utf8");
+    try {
+      const challenges = await listChallenges();
+      expect(challenges.some((challenge) => challenge.id === "optimistic-rollback")).toBe(true);
+    } finally {
+      await fs.rm(corruptPath, { force: true });
+    }
+  });
   it("keeps reference commits, hidden paths, hints, and plan prompts off the browser contract", async () => {
-    const [internal] = await listChallenges();
+    const internal = (await listChallenges()).find((challenge) => challenge.id === "optimistic-rollback")!;
     const publicChallenges = await listPublicChallenges();
     const publicPayload = JSON.stringify(publicChallenges);
-    expect(publicChallenges).toHaveLength(2);
+    expect(publicChallenges.filter((challenge) => challenge.projectId === "task-manager")).toHaveLength(2);
     expect(publicPayload).not.toContain(internal.referenceCommit);
     expect(publicPayload).not.toContain(internal.hiddenTestFile);
     expect(publicPayload).not.toContain(internal.hints[0].text);
@@ -46,12 +60,20 @@ describe("challenge projection", () => {
     expect(JSON.stringify(challenges.map((challenge) => challenge.brief))).not.toMatch(/checkbox/i);
     expect(optimistic?.brief.constraints).toContain("Work in the TypeScript task-manager library; this fixture has no browser screen.");
   });
+
+  it("defaults project identity for legacy challenge and session records", async () => {
+    const [challenge] = await listChallenges();
+    expect(challengeSchema.parse({ ...challenge, projectId: undefined }).projectId).toBe("task-manager");
+    const legacy = { ...sessionRecord(randomUUID(), "planning"), projectId: undefined };
+    expect(sessionSchema.parse(legacy).projectId).toBe("task-manager");
+  });
 });
 
 function sessionRecord(id: string, status: SessionRecord["status"]): SessionRecord {
   return {
     id,
     challengeId: "optimistic-rollback",
+    projectId: "task-manager",
     createdAt: new Date().toISOString(),
     worktreePath: sessionWorktreePath(id),
     status,
@@ -61,6 +83,7 @@ function sessionRecord(id: string, status: SessionRecord["status"]): SessionReco
     explainBack: { question: "Why?", answer: status === "completed" ? "Because state can be restored." : "", aiFeedback: "" },
     reflection: "",
     timeline: [],
+    coachThread: [],
   };
 }
 
