@@ -73,6 +73,20 @@ export default function ReportClient({ sessionId, sample = false }: { sessionId:
     } finally { setBusy(false); }
   }
 
+  async function deleteSession() {
+    if (sample || !payload || busy) return;
+    if (!window.confirm("Delete this saved session and its working copy? This cannot be undone.")) return;
+    setBusy(true); setError("");
+    try {
+      const response = await fetch(`/api/sessions/${sessionId}`, { method: "DELETE" });
+      const data = await response.json();
+      if (!response.ok) throw new Error(data.error ?? "Could not delete this session.");
+      router.push("/");
+    } catch (reason) {
+      setError(reason instanceof Error ? reason.message : "Could not delete this session.");
+    } finally { setBusy(false); }
+  }
+
   return (
     <AppShell active="report">
       {error ? <p className="notice error-notice">{error}</p> : null}
@@ -107,7 +121,7 @@ export default function ReportClient({ sessionId, sample = false }: { sessionId:
           </div>
         </section> : null}
         <section className="reflection"><p className="eyebrow">AI reflection / grounded in timeline + test output <CoachingSourceChip source={session!.reflectionSource} /></p><p>{session!.reflection || "Complete the explain-back to generate an evidence-grounded reflection. Without an API key, Understudy supplies authored coaching instead."}</p></section>
-        <section className="card response-box" style={{ marginTop: 18, display: "flex", justifyContent: "space-between", alignItems: "center", gap: 18 }}><div><p className="eyebrow">{payload.recommendedChallenge ? "Recommended next" : "Library status"}</p><h2>{payload.recommendedChallenge ? payload.recommendedChallenge.title : "You've completed the library"}</h2><p>{payload.recommendedChallenge ? payload.recommendedChallenge.brief.desiredBehavior : "Both curated replays are complete. You can revisit a challenge or return to the library."}</p></div><div className="action-row">{sample ? null : <button className="button secondary" onClick={practiceAgain} disabled={busy}>{busy ? "Preparing..." : "Practice again"}</button>}<Link className="button" href="/">{sample ? "Open library" : payload.recommendedChallenge ? "Replay next ->" : "Back to library"}</Link></div></section>
+        <section className="card response-box" style={{ marginTop: 18, display: "flex", justifyContent: "space-between", alignItems: "center", gap: 18 }}><div><p className="eyebrow">{payload.recommendedChallenge ? "Recommended next" : "Library status"}</p><h2>{payload.recommendedChallenge ? payload.recommendedChallenge.title : "You've completed the library"}</h2><p>{payload.recommendedChallenge ? payload.recommendedChallenge.brief.desiredBehavior : "Both curated replays are complete. You can revisit a challenge or return to the library."}</p></div><div className="action-row report-actions">{sample ? null : <><button className="button quiet" onClick={deleteSession} disabled={busy}>Delete this session</button><button className="button secondary" onClick={practiceAgain} disabled={busy}>{busy ? "Preparing..." : "Practice again"}</button></>}<Link className="button" href="/">{sample ? "Open library" : payload.recommendedChallenge ? "Replay next ->" : "Back to library"}</Link></div></section>
       </section>}
     </AppShell>
   );

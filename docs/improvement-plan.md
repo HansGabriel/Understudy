@@ -82,6 +82,22 @@ Cheap structural changes that make future extension additive instead of a rewrit
 
 ---
 
+## Phase 1.5 — Round-2 feedback (July 16 user testing) · *quick wins only*
+
+From first real walkthrough of the full loop. Split into now vs roadmap:
+
+**Do before the deadline (small, high-visibility):**
+- **1.5a — Completion state on challenge cards.** The library gives no signal that a challenge was already completed. Use the existing sessions data: completed → "Completed ✓ · View report" (link), passed-in-progress → "Resume session". Removes the "no idea if I already completed the task" confusion.
+- **1.5b — Delete from the report.** A completed session currently can't be discarded from its report page. Add a quiet "Delete this session" (confirm-gated) next to "Practice again", reusing the existing DELETE route.
+- **1.5c — Make plan coaching visible.** GPT-5.6 plan feedback already exists but reads as a footnote under the submit button, so it feels like "input with no feedback." Render the coach's question as a prominent card after submitting, and allow one optional revision of the plan answers before the worktree opens. One round, not a chat.
+- **1.5d — Demo-readability density pass.** Trim copy so every screen is scannable in a 3-minute video: shorter card text, collapse "How this works" once a session exists, keep the signal callout and report as the visual anchors. Copy cuts only — no layout restructuring this close to the deadline.
+
+**Explicitly rejected (and why):**
+- **Free-form AI chat during a session.** The design sheet's stance — "a rationed resource, not a chat window" — is the product's differentiator and what makes the independence signal honest. The fix for "I got no feedback" is 1.5c (make existing coaching visible), not a chat box.
+- **Task regeneration, richer UI-task media, project import.** All real, all Phase 4 (items 1–5 below). Regeneration is AI Forge; UI screenshots need the fixture-with-a-UI; import is the project library.
+
+---
+
 ## Phase 4 — Post-hackathon roadmap (the "extendable for future use" part)
 
 In order of leverage, each building on the last:

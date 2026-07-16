@@ -4,7 +4,7 @@ import { useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
 import Link from "next/link";
 import { AppShell } from "@/components/app-shell";
-import { ChallengeCard } from "@/components/challenge-card";
+import { ChallengeCard, type ChallengeProgress } from "@/components/challenge-card";
 import type { PublicChallenge } from "@/lib/schemas";
 
 const comingSoon = [
@@ -20,11 +20,18 @@ type LibraryEntry =
   | { kind: "challenge"; challenge: PublicChallenge }
   | (typeof comingSoon)[number] & { kind: "coming-soon" };
 
+type RecentPayload = {
+  total: number;
+  challengeStates?: Record<string, ChallengeProgress>;
+};
+
 export default function LibraryPage() {
   const router = useRouter();
   const [challenges, setChallenges] = useState<PublicChallenge[]>([]);
   const [error, setError] = useState("");
   const [busy, setBusy] = useState("");
+  const [challengeProgress, setChallengeProgress] = useState<Record<string, ChallengeProgress>>({});
+  const [hasSessions, setHasSessions] = useState(false);
   const fixtureUnavailable = /fixture|fixture:build/i.test(error);
   const entries: LibraryEntry[] = challenges.length
     ? [
@@ -34,10 +41,22 @@ export default function LibraryPage() {
     : [];
 
   useEffect(() => {
+    let cancelled = false;
     fetch("/api/challenges")
       .then(async (response) => response.ok ? response.json() : Promise.reject(await response.json()))
-      .then(setChallenges)
-      .catch((reason) => setError(reason.error ?? "Could not load replay challenges."));
+      .then((data: PublicChallenge[]) => { if (!cancelled) setChallenges(data); })
+      .catch((reason) => { if (!cancelled) setError(reason.error ?? "Could not load replay challenges."); });
+    fetch("/api/sessions/recent")
+      .then(async (response) => response.ok ? response.json() : Promise.reject(await response.json()))
+      .then((data: RecentPayload) => {
+        if (cancelled) return;
+        setHasSessions(data.total > 0);
+        setChallengeProgress(data.challengeStates ?? {});
+      })
+      .catch(() => {
+        // Progress is additive; the library remains usable if the local index is unavailable.
+      });
+    return () => { cancelled = true; };
   }, []);
 
   async function replay(challengeId: string) {
@@ -72,14 +91,14 @@ export default function LibraryPage() {
         <div><p className="eyebrow">One practice project / two real changes</p><h1>Learn from real history: Understudy drops you at the commit before a meaningful change and asks you to rebuild it yourself.</h1><p>A replay is a guided chance to rebuild a real change from this project&apos;s history. You make the change in your own editor; the project&apos;s tests show when the behavior is right.</p></div>
       </header>
       <section className="page-content">
-        <section className="how-it-works" aria-labelledby="how-it-works-title">
+        {!hasSessions ? <section className="how-it-works" aria-labelledby="how-it-works-title">
           <div className="how-it-works-head"><p className="eyebrow">How this works</p><h2 id="how-it-works-title">A short loop around a real, local code change.</h2></div>
           <ol>
-            <li><span>1</span><p><strong>Pick a real change from this project&apos;s history.</strong> Choose a replay with a focused behavior to rebuild.</p></li>
-            <li><span>2</span><p><strong>Get a copy from just before it landed.</strong> Open your working copy in your own editor and make the change there.</p></li>
-            <li><span>3</span><p><strong>Come back to prove the behavior.</strong> Run the project&apos;s own tests, use coaching if useful, and explain your reasoning.</p></li>
+            <li><span>1</span><p><strong>Pick a focused replay.</strong> Start from a real change in this project&apos;s history.</p></li>
+            <li><span>2</span><p><strong>Open your working copy.</strong> Make the change in your own editor.</p></li>
+            <li><span>3</span><p><strong>Prove the behavior.</strong> Run the tests, use coaching if useful, and explain your reasoning.</p></li>
           </ol>
-        </section>
+        </section> : null}
         {fixtureUnavailable ? <article className="card setup-card">
           <p className="eyebrow">Local setup required</p>
           <h2>Build the task-manager fixture before practicing.</h2>
@@ -90,7 +109,7 @@ export default function LibraryPage() {
           <h2>Try refreshing the local app.</h2>
           <p>{error}</p>
         </article> : entries.length ? entries.map((entry) => entry.kind === "challenge"
-          ? <ChallengeCard key={entry.challenge.id} challenge={entry.challenge} busy={busy === entry.challenge.id} onReplay={replay} />
+          ? <ChallengeCard key={entry.challenge.id} challenge={entry.challenge} progress={challengeProgress[entry.challenge.id]} busy={busy === entry.challenge.id} onReplay={replay} />
           : <article className="coming-soon" key={entry.id}><span className="replay-tag">IN AUTHORING</span><h2>{entry.title}</h2><p>{entry.description}</p><div className="chip-row">{entry.tags.map((tag) => <span className="chip" key={tag}>{tag}</span>)}</div></article>)
           : <article className="card challenge-card"><div><p className="eyebrow">Loading local challenge manifests</p><h2>Preparing the replay library</h2><p>Checking the public manifest data while reference commits remain server-only.</p></div></article>}
         <p className="sample-report-link"><Link href="/report/sample">View a sample mastery report</Link></p>

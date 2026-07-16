@@ -15,9 +15,22 @@ export async function GET() {
     const saved = sessions
       .filter((session) => session.id !== sampleSessionId)
       .sort((left, right) => right.createdAt.localeCompare(left.createdAt));
+    // `saved` is newest-first for the sidebar. Build the per-challenge map
+    // oldest-first so the newest session wins when a learner has replayed a
+    // challenge more than once.
+    const challengeStates = Object.fromEntries(
+      [...saved].sort((left, right) => left.createdAt.localeCompare(right.createdAt)).map((session) => [
+        session.challengeId,
+        {
+          id: session.id,
+          status: session.status,
+        },
+      ]),
+    );
 
     return Response.json({
       total: saved.length,
+      challengeStates,
       sessions: saved.slice(0, 5).map((session) => ({
         id: session.id,
         challengeId: session.challengeId,

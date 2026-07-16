@@ -6,6 +6,8 @@ import { sampleSessionFixturePath, sampleSessionId, sessionDirectory } from "@/l
 import { sampleSessionFixtureSchema, type SessionRecord } from "@/lib/schemas";
 import { GET as getRecentSessions } from "@/app/api/sessions/recent/route";
 import { GET as getSampleSession } from "@/app/api/sample-session/route";
+import { POST as submitPlan } from "@/app/api/sessions/[id]/plan/route";
+import { POST as confirmPlan } from "@/app/api/sessions/[id]/plan/confirm/route";
 import { discardSession } from "@/lib/session-cleanup";
 
 function testSession(id: string): SessionRecord {
@@ -15,7 +17,7 @@ function testSession(id: string): SessionRecord {
     createdAt: new Date().toISOString(),
     worktreePath: `runtime/sessions/${id}/worktree`,
     status: "planning",
-    plan: { answers: ["", "", ""], aiFeedback: "" },
+    plan: { answers: ["", "", ""], aiFeedback: "", revisionCount: 0, confirmed: false },
     attempts: [],
     hints: [],
     explainBack: { question: "Why?", answer: "", aiFeedback: "" },
@@ -60,6 +62,7 @@ describe("session persistence", () => {
       ]));
       expect(payload.sessions.every((session: { id: string }) => session.id !== sampleSessionId)).toBe(true);
       expect(payload.total).toBeGreaterThanOrEqual(1);
+      expect(payload.challengeStates[record.challengeId]).toEqual({ id, status: record.status });
     } finally {
       await fs.rm(sessionDirectory(id), { recursive: true, force: true });
     }
@@ -103,6 +106,39 @@ describe("session persistence", () => {
       expect(await pendingDiscard).toBeNull();
       expect((await loadSession(id)).status).toBe("completed");
     } finally {
+      await fs.rm(sessionDirectory(id), { recursive: true, force: true });
+    }
+  });
+
+  it("shows plan coaching, permits one revision, then requires confirmation", async () => {
+    const id = randomUUID();
+    const context = { params: Promise.resolve({ id }) } as never;
+    const originalKey = process.env.OPENAI_API_KEY;
+    delete process.env.OPENAI_API_KEY;
+    try {
+      await saveSession(testSession(id));
+      const first = await submitPlan(new Request(`http://localhost/api/sessions/${id}/plan`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ answers: ["Observe the immediate task change", "Inspect the completion and save path", "A rejected save must restore the old task"] }),
+      }), context);
+      expect(first.status).toBe(200);
+      expect((await loadSession(id)).plan.confirmed).toBe(false);
+
+      const revision = await submitPlan(new Request(`http://localhost/api/sessions/${id}/plan`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ answers: ["Show completion immediately", "Trace the task manager mutation", "A failed save must restore the prior state"] }),
+      }), context);
+      expect(revision.status).toBe(200);
+      expect((await loadSession(id)).plan.revisionCount).toBe(1);
+
+      const confirmation = await confirmPlan(new Request(`http://localhost/api/sessions/${id}/plan/confirm`, { method: "POST" }), context);
+      expect(confirmation.status).toBe(200);
+      expect((await loadSession(id)).plan.confirmed).toBe(true);
+    } finally {
+      if (originalKey === undefined) delete process.env.OPENAI_API_KEY;
+      else process.env.OPENAI_API_KEY = originalKey;
       await fs.rm(sessionDirectory(id), { recursive: true, force: true });
     }
   });

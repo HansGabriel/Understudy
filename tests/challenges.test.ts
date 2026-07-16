@@ -55,7 +55,7 @@ function sessionRecord(id: string, status: SessionRecord["status"]): SessionReco
     createdAt: new Date().toISOString(),
     worktreePath: sessionWorktreePath(id),
     status,
-    plan: { answers: ["behavior", "investigation", "edge case"], aiFeedback: "" },
+    plan: { answers: ["behavior", "investigation", "edge case"], aiFeedback: "", revisionCount: 0, confirmed: false },
     attempts: [],
     hints: [],
     explainBack: { question: "Why?", answer: status === "completed" ? "Because state can be restored." : "", aiFeedback: "" },

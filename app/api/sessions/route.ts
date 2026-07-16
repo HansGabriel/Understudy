@@ -14,7 +14,7 @@ function newSession(challengeId: string, worktreePath: string, explainBackQuesti
     challengeId,
     worktreePath,
     status: "planning",
-    plan: { answers: ["", "", ""], aiFeedback: "", aiSource: "authored" },
+    plan: { answers: ["", "", ""], aiFeedback: "", aiSource: "authored", revisionCount: 0, confirmed: false },
     attempts: [],
     hints: [],
     explainBack: { question: explainBackQuestion, answer: "", aiFeedback: "", aiSource: "authored" },

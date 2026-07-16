@@ -88,7 +88,13 @@ export const sessionSchema = z.object({
   createdAt: z.string().datetime(),
   worktreePath: z.string(),
   status: z.enum(["planning", "coding", "passed", "completed"]),
-  plan: z.object({ answers: z.array(z.string()).length(3), aiFeedback: z.string(), aiSource: coachingSourceSchema.optional() }),
+  plan: z.object({
+    answers: z.array(z.string()).length(3),
+    aiFeedback: z.string(),
+    aiSource: coachingSourceSchema.optional(),
+    revisionCount: z.number().int().min(0).max(1).default(0),
+    confirmed: z.boolean().default(false),
+  }),
   attempts: z.array(
     z.object({
       at: z.string().datetime(),
