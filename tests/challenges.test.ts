@@ -36,6 +36,16 @@ describe("challenge projection", () => {
     expect(recommendation?.id).toBe("persist-filter");
     expect(await recommendNextChallenge(["optimistic-rollback", "persist-filter"])).toBeNull();
   });
+
+  it("describes the headless TypeScript practice project without promising a browser UI", async () => {
+    const challenges = await listChallenges();
+    const optimistic = challenges.find((challenge) => challenge.id === "optimistic-rollback");
+    const persisted = challenges.find((challenge) => challenge.id === "persist-filter");
+    expect(optimistic?.brief.desiredBehavior).toContain("data layer of a task-manager app");
+    expect(persisted?.brief.desiredBehavior).toContain("data layer of a task-manager app");
+    expect(JSON.stringify(challenges.map((challenge) => challenge.brief))).not.toMatch(/checkbox/i);
+    expect(optimistic?.brief.constraints).toContain("Work in the TypeScript task-manager library; this fixture has no browser screen.");
+  });
 });
 
 function sessionRecord(id: string, status: SessionRecord["status"]): SessionRecord {

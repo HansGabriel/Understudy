@@ -22,7 +22,9 @@ export type ReferenceDiff = DiffDetails & {
 async function git(args: string[], cwd = runtimeRoot) {
   try {
     const result = await execFile("git", args, { cwd, windowsHide: true, timeout: 120_000, maxBuffer: 2_000_000 });
-    return `${result.stdout}\n${result.stderr}`.trim();
+    // Git can emit harmless line-ending and repository warnings on stderr. They
+    // must not become part of learner-facing diff/stat data.
+    return result.stdout.trim();
   } catch (error) {
     const detail = error as { stdout?: string; stderr?: string; message?: string };
     throw new Error(`${detail.stdout ?? ""}\n${detail.stderr ?? detail.message ?? "Git command failed."}`.trim());

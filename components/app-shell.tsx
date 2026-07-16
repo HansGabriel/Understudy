@@ -23,7 +23,7 @@ type RecentPayload = {
 
 const stageLabel = {
   library: "Choose a replay",
-  session: "Practice in a worktree",
+  session: "Practice in your working copy",
   report: "Review learning evidence",
 } as const;
 
@@ -69,9 +69,13 @@ export function AppShell({ active, children }: AppShellProps) {
         <div className="shell-body">
           <aside className="sidebar">
             <div>
-              <p className="eyebrow">Practice repository</p>
-              <div className="project-select"><strong>task-manager</strong><span>curated local fixture</span></div>
-              <p className="fixture-note">A small, versioned repository is bundled so every replay has a reproducible starting point.</p>
+              <p className="eyebrow">Practice project</p>
+              <div className="project-select"><strong>task-manager</strong><span>bundled practice project</span></div>
+              <p className="fixture-note">Understudy is the coach. task-manager is the project you&apos;re improving, in a copy on your own disk.</p>
+              <button className="project-roadmap" type="button" disabled>
+                <strong>Load a different project</strong>
+                <span>This MVP ships one practice project. Adding your own repository is next on the roadmap.</span>
+              </button>
             </div>
             <div>
               <p className="eyebrow">Learning loop</p>
@@ -98,7 +102,7 @@ export function AppShell({ active, children }: AppShellProps) {
                 </div>
               ) : <p className="recent-empty">No saved sessions yet.</p>}
             </div>
-            <p className="sidebar-foot">{recent.total} sessions saved<br />Git worktrees<br />Tests decide outcomes</p>
+            <p className="sidebar-foot">{recent.total} sessions saved<br />Your working copies stay isolated<br />Tests decide outcomes</p>
           </aside>
           <section className="workspace">{children}</section>
         </div>

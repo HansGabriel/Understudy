@@ -1,8 +1,8 @@
 # Understudy
 
-**Git replay → guided practice. AI coaches, you own the code.**
+**Learn from real history: Understudy drops you at the commit before a meaningful change and asks you to rebuild it yourself.**
 
-Understudy is a local, desktop-first learning lab for developers. It drops a learner into a pinned commit in a bundled, versioned task-manager fixture, creates an isolated git worktree, and uses a normal suite plus a behavioral test to make overlooked edge cases visible. The fixture is intentionally supplied by Understudy because no learner repository has been connected.
+Understudy is a local, desktop-first learning lab for developers. It gives you a copy of the bundled task-manager practice project from just before a real change landed, then asks you to rebuild the behavior in your own editor. That copy is an isolated Git worktree; Understudy calls it **your working copy**. The project's own tests and one edge-case check make overlooked behavior visible. The fixture is intentionally supplied by Understudy because no learner repository has been connected.
 
 ## Run locally
 
@@ -28,10 +28,10 @@ Copy `.env.example` rather than committing an environment file. Without a key, e
 
 ## What the replay does
 
-1. Pick a curated task-manager change from the practice library.
+1. Pick a real task-manager change from the practice library. A **replay** is a guided rebuild of a change from that project's history.
 2. Answer three planning questions before editing.
-3. Open the isolated worktree in your own editor.
-4. Run the normal suite and a behavioral test. A green normal suite plus an amber behavioral failure is the intended signal, not a setup error.
+3. Open your working copy (an isolated Git worktree) in your own editor.
+4. Run the project's own tests and an edge-case check. Green project tests plus an amber edge-case failure is the intended signal, not a setup error.
 5. Use up to three ordered hints, explain your reasoning, and review a commit-graph mastery report.
 
 During a live session the browser never receives reference commit IDs, hidden-test paths, unrevealed hints, or a reference patch. After the learner passes both checks and submits the explain-back, the session becomes `completed` and the Mastery Report intentionally reveals the reference commit, changed-file list, and patch for side-by-side learning. The server accepts only manifest-declared package scripts; browser input never reaches a shell command.
@@ -61,6 +61,13 @@ Understudy is prepared for the Education category: it teaches developers to reas
 ### How Codex and GPT-5.6 are used
 
 Codex accelerated the app's implementation, fixture history authoring, test hardening, and visual polish. In-product, GPT-5.6 is called only from Next.js server routes through the Responses API and structured Zod output. It provides concise plan feedback, adaptive wording for authored hints, test-failure coaching, and evidence-grounded reflection. It receives no learner source code, diffs, or reference implementation, and deterministic tests remain authoritative.
+
+### Submission details to complete
+
+- **Category:** Education.
+- **Key decisions and evidence:** the product boundaries and delivery order are recorded in `docs/improvement-plan.md`; the deterministic challenge validator and automated tests are the implementation evidence.
+- **Codex feedback session ID:** retrieve the required ID from `/feedback` before creating the Devpost submission. Do not invent an ID or include an API key in the repository, video, or submission form.
+- **Demo:** record the voiced, public video in `docs/demo-script.md` after the final local and cross-platform run-through. It should visibly show the GPT-5.6 source chip when live coaching is available, plus the authored-coaching fallback when it is not.
 
 ## Deliberate boundaries
 

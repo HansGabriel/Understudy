@@ -68,10 +68,18 @@ export default function LibraryPage() {
 
   return (
     <AppShell active="library">
-      <header className="page-head">
-        <div><p className="eyebrow">Task-manager fixture / 2 curated replays</p><h1>Practice with a real worktree.</h1><p>Each replay starts from a pinned commit in the bundled repository. Plan the behavior, rebuild it in your own editor, and let deterministic checks show what you missed.</p></div>
+      <header className="page-head library-head">
+        <div><p className="eyebrow">One practice project / two real changes</p><h1>Learn from real history: Understudy drops you at the commit before a meaningful change and asks you to rebuild it yourself.</h1><p>A replay is a guided chance to rebuild a real change from this project&apos;s history. You make the change in your own editor; the project&apos;s tests show when the behavior is right.</p></div>
       </header>
       <section className="page-content">
+        <section className="how-it-works" aria-labelledby="how-it-works-title">
+          <div className="how-it-works-head"><p className="eyebrow">How this works</p><h2 id="how-it-works-title">A short loop around a real, local code change.</h2></div>
+          <ol>
+            <li><span>1</span><p><strong>Pick a real change from this project&apos;s history.</strong> Choose a replay with a focused behavior to rebuild.</p></li>
+            <li><span>2</span><p><strong>Get a copy from just before it landed.</strong> Open your working copy in your own editor and make the change there.</p></li>
+            <li><span>3</span><p><strong>Come back to prove the behavior.</strong> Run the project&apos;s own tests, use coaching if useful, and explain your reasoning.</p></li>
+          </ol>
+        </section>
         {fixtureUnavailable ? <article className="card setup-card">
           <p className="eyebrow">Local setup required</p>
           <h2>Build the task-manager fixture before practicing.</h2>

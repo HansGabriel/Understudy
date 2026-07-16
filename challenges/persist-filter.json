@@ -4,8 +4,8 @@
   "hiddenTestCommand": "test:challenge",
   "id": "persist-filter",
   "title": "Persist task-filter preferences",
-  "baseCommit": "9f27b6c7a0c92636f543f2d4874a4863d6624254",
-  "referenceCommit": "4e314c14aeb8ffd8683b3eac937c8c2cb3b6c0ff",
+  "baseCommit": "e4c0b5b8e569ce9772e1709e460334da5b0f3222",
+  "referenceCommit": "a92083b85316f615e89774142c23be881abca618",
   "hiddenTestFile": "challenges/tests/persist-filter.challenge.test.ts",
   "difficulty": 2,
   "estimatedTime": "15–20 min",
@@ -15,21 +15,22 @@
     "state persistence"
   ],
   "brief": {
-    "desiredBehavior": "Remember the active task filter across reloads, validating stored values before applying them.",
+    "desiredBehavior": "You're building the data layer of a task-manager app. Remember the active task filter when the task manager is created again. Read stored data defensively so an unexpected value falls back to all tasks.",
     "acceptanceCriteria": [
-      "The selected filter survives a reload.",
-      "Invalid stored values safely fall back to the default.",
+      "Changing the filter writes the selected value to storage.",
+      "A new task manager uses a valid stored filter.",
+      "An absent or invalid stored value falls back to all tasks.",
       "Existing filtering behavior remains correct."
     ],
     "constraints": [
-      "Preserve existing behavior",
-      "Use browser storage defensively"
+      "Work in the TypeScript task-manager library; this fixture has no browser screen.",
+      "Use browser storage defensively and preserve existing behavior."
     ]
   },
   "planQuestions": [
-    "What state should survive a reload?",
-    "Where would you initialize that state?",
-    "What stored value should be treated as invalid?"
+    "Which preference should still be active when the task manager is created again?",
+    "Where does the task manager read and write that preference?",
+    "Which stored values must fall back safely?"
   ],
   "hints": [
     {

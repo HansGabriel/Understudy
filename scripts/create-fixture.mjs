@@ -209,9 +209,9 @@ async function main() {
     difficulty: 3,
     estimatedTime: "20–30 min",
     learningObjectives: ["optimistic UI", "rollback", "async failure"],
-    brief: { desiredBehavior: "Complete a task immediately in the UI. If the save request fails, restore the task to its earlier state and surface the error.", acceptanceCriteria: ["The UI updates immediately after completion.", "A failed save restores the earlier task state.", "The failure is visible to the user."], constraints: ["Preserve existing behavior", "Use the project's existing patterns"] },
-    planQuestions: ["What behavior should change?", "Where would you investigate first?", "What failure or edge case should be tested?"],
-    hints: [{ level: 1, text: "Consider what the UI should show if persistence fails." }, { level: 2, text: "What state would you need to preserve before updating the task?" }, { level: 3, text: "Look at the completion mutation in the task manager — something about the pre-update state matters there." }],
+    brief: { desiredBehavior: "You're building the data layer of a task-manager app. When someone completes a task, its state should update immediately. If saving fails, restore the earlier state and make the error available to the app.", acceptanceCriteria: ["Completing a task updates its data immediately, before saving finishes.", "A rejected save returns the task to its earlier state.", "The task manager exposes a clear save error after the rejected save."], constraints: ["Work in the TypeScript task-manager library; this fixture has no browser screen.", "Preserve existing behavior and use the project's patterns."] },
+    planQuestions: ["What should someone observe first, and what should happen if saving fails?", "Which task-manager behavior and tests would you inspect before coding?", "What edge case would prove the earlier state is restored?"],
+    hints: [{ level: 1, text: "Consider what the task manager should expose if persistence fails." }, { level: 2, text: "What earlier task state would you need to preserve before applying the immediate change?" }, { level: 3, text: "Look at the completion behavior in the task manager — something about the pre-change state matters there." }],
     explainBackQuestion: "Why must the earlier task state be saved before an optimistic update?",
   };
   const persisted = {
@@ -224,8 +224,8 @@ async function main() {
     difficulty: 2,
     estimatedTime: "15–20 min",
     learningObjectives: ["localStorage", "validation", "state persistence"],
-    brief: { desiredBehavior: "Remember the active task filter across reloads, validating stored values before applying them.", acceptanceCriteria: ["The selected filter survives a reload.", "Invalid stored values safely fall back to the default.", "Existing filtering behavior remains correct."], constraints: ["Preserve existing behavior", "Use browser storage defensively"] },
-    planQuestions: ["What state should survive a reload?", "Where would you initialize that state?", "What stored value should be treated as invalid?"],
+    brief: { desiredBehavior: "You're building the data layer of a task-manager app. Remember the active task filter when the task manager is created again. Read stored data defensively so an unexpected value falls back to all tasks.", acceptanceCriteria: ["Changing the filter writes the selected value to storage.", "A new task manager uses a valid stored filter.", "An absent or invalid stored value falls back to all tasks.", "Existing filtering behavior remains correct."], constraints: ["Work in the TypeScript task-manager library; this fixture has no browser screen.", "Use browser storage defensively and preserve existing behavior."] },
+    planQuestions: ["Which preference should still be active when the task manager is created again?", "Where does the task manager read and write that preference?", "Which stored values must fall back safely?"],
     hints: [{ level: 1, text: "Think about when a preference is read versus when it is written." }, { level: 2, text: "What values should storage be allowed to restore?" }, { level: 3, text: "Inspect the filter state initialization and selection method." }],
     explainBackQuestion: "Why should a stored preference be validated before it changes the UI?",
   };

@@ -116,7 +116,7 @@
     "patch": "diff --git a/src/task-manager.ts b/src/task-manager.ts\nindex a08d57a..learner 100644\n--- a/src/task-manager.ts\n+++ b/src/task-manager.ts\n@@ -18,5 +18,11 @@ export class TaskManager {\n-    await this.saveTask(nextTask);\n+    const previous = this.getTask(id);\n+    if (!previous) throw new Error(\"Task not found\");\n+    const nextTask = { ...previous, done: !previous.done };\n+    this.tasks = this.tasks.map((item) => item.id === id ? nextTask : item);\n+    try { await this.saveTask(nextTask); }\n+    catch { this.tasks = this.tasks.map((item) => item.id === id ? previous : item); }\n"
   },
   "referenceDiff": {
-    "commit": "9f27b6c7a0c92636f543f2d4874a4863d6624254",
+    "commit": "e4c0b5b8e569ce9772e1709e460334da5b0f3222",
     "files": ["src/task-manager.ts"],
     "patch": "diff --git a/src/task-manager.ts b/src/task-manager.ts\nindex a08d57a..219ce2e 100644\n--- a/src/task-manager.ts\n+++ b/src/task-manager.ts\n@@ -18,10 +18,16 @@ export class TaskManager {\n-    const task = this.getTask(id);\n-    if (!task) throw new Error(\"Task not found\");\n-    const nextTask = { ...task, done: !task.done };\n-    await this.saveTask(nextTask);\n+    const previous = this.getTask(id);\n+    if (!previous) throw new Error(\"Task not found\");\n+    const nextTask = { ...previous, done: !previous.done };\n+    this.error = \"\";\n+    this.tasks = this.tasks.map((item) => item.id === id ? nextTask : item);\n+    try {\n+      await this.saveTask(nextTask);\n+    } catch {\n+      this.tasks = this.tasks.map((item) => item.id === id ? previous : item);\n+      this.error = \"Could not save task. Try again.\";\n+    }\n"
   }

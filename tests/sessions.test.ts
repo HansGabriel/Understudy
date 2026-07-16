@@ -78,7 +78,7 @@ describe("session persistence", () => {
     const payload = await response.json();
     expect(response.status).toBe(200);
     expect(payload.session.status).toBe("completed");
-    expect(payload.referenceDiff.commit).toBe("9f27b6c7a0c92636f543f2d4874a4863d6624254");
+    expect(payload.referenceDiff.commit).toBe("e4c0b5b8e569ce9772e1709e460334da5b0f3222");
     expect(payload.learnerDiff.files).toContain("src/task-manager.ts");
   });
 

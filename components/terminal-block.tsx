@@ -10,8 +10,8 @@ export function TerminalBlock({ normal, behavioral }: { normal?: CheckResult; be
   const block = (command: string, output: string, suite: "normal" | "behavioral", passed: boolean | undefined) => <>{[command, ...output.split("\n")].map((line, index) => <span className={lineClass(line, suite, passed)} key={`${suite}-${index}-${line}`}>{line}{"\n"}</span>)}</>;
   return (
     <section className="terminal" aria-label="Test output">
-      <div className="terminal-head"><span>verification output / test + behavioral check</span><span>{normal || behavioral ? `exit ${normal?.exitCode || behavioral?.exitCode || 0}` : "ready"}</span></div>
-      <pre>{normal || behavioral ? <>{block("$ npm run test", normal?.output || "Waiting for normal suite...", "normal", normal?.passed)}{"\n"}{block("$ npm run test:challenge", behavioral?.output || "Waiting for behavioral check...", "behavioral", behavioral?.passed)}</> : "Run checks after you submit your plan. Normal tests and the hidden behavioral test will appear here."}</pre>
+      <div className="terminal-head"><span>verification output / project tests + edge-case check</span><span>{normal || behavioral ? `exit ${normal?.exitCode || behavioral?.exitCode || 0}` : "ready"}</span></div>
+      <pre>{normal || behavioral ? <>{block("$ npm run test", normal?.output || "Waiting for the project's own tests...", "normal", normal?.passed)}{"\n"}{block("$ npm run test:challenge", behavioral?.output || "Waiting for the edge-case check...", "behavioral", behavioral?.passed)}</> : "Run checks after you submit your plan. The project's own tests and a hidden edge-case check will appear here."}</pre>
     </section>
   );
 }
