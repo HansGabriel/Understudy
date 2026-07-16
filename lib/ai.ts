@@ -39,11 +39,18 @@ async function coach(prompt: string, fallback: string, accept: (feedback: string
 }
 
 export function planFeedback(answers: string[], challenge: Challenge) {
-  const fallback = "What should the learner be able to observe immediately, and what should still be true if persistence later rejects the change?";
+  const normalizedAnswers = answers.map((answer) => answer.trim());
+  const combinedAnswers = normalizedAnswers.join(" ");
+  const vagueAnswer = normalizedAnswers.some((answer) => answer.length < 18 || /^(?:i have no idea|idk|not sure|maybe|the task details|n\/a)$/i.test(answer));
+  const namesBehavior = /\b(?:immediate|before|after|state|task|completion|complete|filter|storage|persist|preference|value)\b/i.test(combinedAnswers);
+  const namesFailure = /\b(?:fail|reject|error|invalid|restore|rollback|revert|fallback|preserve|missing)\b/i.test(combinedAnswers);
+  const fallback = vagueAnswer || !namesBehavior || !namesFailure
+    ? "Plan check: needs revision — your answers are a useful start, but they do not yet name a concrete observable behavior and failure case that the tests can prove. This is not a grading verdict; make those two details explicit before you open the working copy. What exact result should change, and what exact result must remain true when the edge case happens?"
+    : "Plan check: aligned with the brief — you named a behavior, an investigation path, and an edge case. This is a reasonable starting hypothesis, not a correctness verdict; the project's tests decide whether the implementation works. Which test result would prove your plan is wrong?";
   return coach(
-    `Challenge brief: ${challenge.brief.desiredBehavior}\nLearner plan:\n1. ${answers[0]}\n2. ${answers[1]}\n3. ${answers[2]}\nReturn exactly one short Socratic question. Do not give instructions, name code identifiers, describe an ordering of implementation steps, or include code syntax.`,
+    `Challenge brief: ${challenge.brief.desiredBehavior}\nLearner plan:\n1. ${answers[0]}\n2. ${answers[1]}\n3. ${answers[2]}\nReturn a short plan check that starts exactly with "Plan check: aligned" or "Plan check: needs revision". Name one concrete strength or missing detail, say that tests—not the coach—decide correctness, and end with one Socratic question. Do not give instructions, name code identifiers, describe an ordering of implementation steps, or include code syntax.`,
     fallback,
-    (feedback) => isSafeCoachingText(feedback) && /^([^.!?]+\?)$/.test(feedback.trim()),
+    (feedback) => isSafeCoachingText(feedback) && /^Plan check:\s*(?:aligned|needs revision)\b/i.test(feedback.trim()) && feedback.includes("?"),
   );
 }
 

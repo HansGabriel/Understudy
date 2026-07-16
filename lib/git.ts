@@ -2,7 +2,7 @@ import { execFile as execFileCallback } from "node:child_process";
 import { existsSync, promises as fs } from "node:fs";
 import path from "node:path";
 import { promisify } from "node:util";
-import { assertFixtureAvailable } from "@/lib/fixture";
+import { assertFixtureAvailable, FixtureUnavailableError } from "@/lib/fixture";
 import { assertInside, fixtureBundlePath, fixtureRepoPath, runtimeRoot, sessionDirectory, sessionWorktreePath, sessionsRoot } from "@/lib/paths";
 import { installFixtureDependencies } from "@/lib/test-runner";
 
@@ -31,16 +31,47 @@ async function git(args: string[], cwd = runtimeRoot) {
   }
 }
 
-export async function ensureFixture() {
-  if (existsSync(path.join(fixtureRepoPath, ".git"))) return fixtureRepoPath;
+export async function ensureFixture(...requiredCommits: string[]) {
+  if (existsSync(path.join(fixtureRepoPath, ".git"))) {
+    const missingCommits = await findMissingCommits(fixtureRepoPath, requiredCommits);
+    if (missingCommits.length) {
+      try {
+        // The bundle can be rebuilt while an older clone remains under
+        // runtime/. Refresh objects before creating a worktree or showing a
+        // reference diff, otherwise Git reports an opaque "invalid reference".
+        await git(["-C", fixtureRepoPath, "fetch", "--prune", "origin"]);
+      } catch {
+        throw new FixtureUnavailableError();
+      }
+      if ((await findMissingCommits(fixtureRepoPath, missingCommits)).length) {
+        throw new FixtureUnavailableError();
+      }
+    }
+    return fixtureRepoPath;
+  }
   assertFixtureAvailable();
   await fs.mkdir(runtimeRoot, { recursive: true });
   await git(["clone", fixtureBundlePath, fixtureRepoPath], runtimeRoot);
+  if ((await findMissingCommits(fixtureRepoPath, requiredCommits)).length) {
+    throw new FixtureUnavailableError();
+  }
   return fixtureRepoPath;
 }
 
+async function findMissingCommits(fixture: string, commits: string[]) {
+  const missing: string[] = [];
+  for (const commit of commits) {
+    try {
+      await git(["-C", fixture, "cat-file", "-e", `${commit}^{commit}`]);
+    } catch {
+      missing.push(commit);
+    }
+  }
+  return missing;
+}
+
 export async function createWorktree(sessionId: string, baseCommit: string) {
-  const fixture = await ensureFixture();
+  const fixture = await ensureFixture(baseCommit);
   const worktree = sessionWorktreePath(sessionId);
   const sessionDir = sessionDirectory(sessionId);
   assertInside(sessionsRoot, sessionDir);
@@ -95,7 +126,7 @@ export async function diffDetails(worktreePath: string): Promise<DiffDetails> {
 }
 
 export async function referenceDiff(baseCommit: string, referenceCommit: string): Promise<ReferenceDiff> {
-  const fixture = await ensureFixture();
+  const fixture = await ensureFixture(baseCommit, referenceCommit);
   const [patch, names] = await Promise.all([
     git(["-C", fixture, "diff", "--no-ext-diff", "--unified=3", baseCommit, referenceCommit, "--"]),
     git(["-C", fixture, "diff", "--name-only", baseCommit, referenceCommit, "--"]),

@@ -17,4 +17,20 @@ describe("coaching source labels", () => {
       else process.env.OPENAI_API_KEY = originalKey;
     }
   });
+
+  it("gives an explicit plan assessment when the answers are too vague", async () => {
+    const originalKey = process.env.OPENAI_API_KEY;
+    delete process.env.OPENAI_API_KEY;
+    try {
+      const [challenge] = await listChallenges();
+      const result = await planFeedback(["I have no idea", "Maybe repository layer", "The task details"], challenge);
+      expect(result.source).toBe("authored");
+      expect(result.text).toMatch(/^Plan check: needs revision/);
+      expect(result.text).toContain("tests");
+      expect(result.text).toMatch(/\?/);
+    } finally {
+      if (originalKey === undefined) delete process.env.OPENAI_API_KEY;
+      else process.env.OPENAI_API_KEY = originalKey;
+    }
+  });
 });
