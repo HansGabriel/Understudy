@@ -6,6 +6,8 @@ export const sessionsRoot = path.resolve(runtimeRoot, "sessions");
 export const challengesRoot = path.resolve(projectRoot, "challenges");
 export const fixtureBundlePath = path.resolve(projectRoot, "fixtures", "task-manager.bundle");
 export const fixtureRepoPath = path.resolve(runtimeRoot, "task-manager");
+export const sampleSessionFixturePath = path.resolve(projectRoot, "fixtures", "sample-session.json");
+export const sampleSessionId = "00000000-0000-4000-8000-000000000001";
 
 export function assertInside(parent: string, candidate: string) {
   const resolvedParent = path.resolve(parent);

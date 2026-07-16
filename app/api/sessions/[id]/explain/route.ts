@@ -12,10 +12,13 @@ export async function POST(request: Request, context: RouteContext<"/api/session
     const session = await updateSession(id, async (current) => {
       if (current.status !== "passed") throw new Error("Pass all checks before completing the explanation.");
       current.explainBack.answer = answer;
-      current.reflection = await reflection(current);
-      current.explainBack.aiFeedback = current.reflection;
+      const coaching = await reflection(current);
+      current.reflection = coaching.text;
+      current.reflectionSource = coaching.source;
+      current.explainBack.aiFeedback = coaching.text;
+      current.explainBack.aiSource = coaching.source;
       current.status = "completed";
-      return appendTimeline(current, "explained", {});
+      return appendTimeline(current, "explained", {}, coaching.source);
     });
     return Response.json({ explainBack: session.explainBack, reflection: session.reflection });
   } catch (error) {

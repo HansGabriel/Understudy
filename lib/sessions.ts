@@ -1,7 +1,7 @@
 import { promises as fs } from "node:fs";
 import { randomUUID } from "node:crypto";
 import { sessionFilePath, sessionDirectory, sessionsRoot } from "@/lib/paths";
-import { sessionSchema, type SessionRecord } from "@/lib/schemas";
+import { sessionSchema, type CoachingSource, type SessionRecord } from "@/lib/schemas";
 
 const locks = new Map<string, Promise<void>>();
 
@@ -32,8 +32,37 @@ export async function saveSession(session: SessionRecord) {
 }
 
 export async function loadSession(sessionId: string): Promise<SessionRecord> {
-  const raw = await fs.readFile(sessionFilePath(sessionId), "utf8");
-  return sessionSchema.parse(JSON.parse(raw));
+  try {
+    const raw = await fs.readFile(sessionFilePath(sessionId), "utf8");
+    return sessionSchema.parse(JSON.parse(raw));
+  } catch (error) {
+    if ((error as NodeJS.ErrnoException).code === "ENOENT") throw new Error("Session not found.");
+    throw error;
+  }
+}
+
+export async function listSessions() {
+  try {
+    const entries = await fs.readdir(sessionsRoot, { withFileTypes: true });
+    const records = await Promise.all(entries.filter((entry) => entry.isDirectory()).map(async (entry) => {
+      try {
+        return await loadSession(entry.name);
+      } catch {
+        return null;
+      }
+    }));
+    return records.filter((record): record is SessionRecord => record !== null);
+  } catch (error) {
+    if ((error as NodeJS.ErrnoException).code === "ENOENT") return [];
+    throw error;
+  }
+}
+
+export async function deleteSessionRecord(sessionId: string) {
+  const file = sessionFilePath(sessionId);
+  const directory = sessionDirectory(sessionId);
+  await fs.rm(file, { force: true });
+  await fs.rm(directory, { recursive: true, force: true });
 }
 
 export async function createSessionRecord(input: Omit<SessionRecord, "createdAt">) {
@@ -55,7 +84,7 @@ export async function updateSession(sessionId: string, update: (session: Session
   });
 }
 
-export function appendTimeline(session: SessionRecord, type: SessionRecord["timeline"][number]["type"], meta: Record<string, unknown> = {}) {
-  session.timeline.push({ type, at: new Date().toISOString(), meta });
+export function appendTimeline(session: SessionRecord, type: SessionRecord["timeline"][number]["type"], meta: Record<string, unknown> = {}, source?: CoachingSource) {
+  session.timeline.push({ type, at: new Date().toISOString(), meta, ...(source ? { source } : {}) });
   return session;
 }

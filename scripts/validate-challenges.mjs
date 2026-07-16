@@ -1,7 +1,8 @@
 import { execFileSync } from "node:child_process";
-import { promises as fs, existsSync } from "node:fs";
+import { promises as fs } from "node:fs";
 import os from "node:os";
 import path from "node:path";
+import { npmInvocation } from "./npm-runner.mjs";
 
 const root = process.cwd();
 const temporary = path.join(os.tmpdir(), `understudy-validate-${Date.now()}`);
@@ -17,8 +18,8 @@ function run(command, args, cwd) {
 }
 
 function npm(args, cwd) {
-  if (process.env.npm_execpath && existsSync(process.env.npm_execpath)) return run(process.execPath, [process.env.npm_execpath, ...args], cwd);
-  return run(process.platform === "win32" ? "npm.cmd" : "npm", args, cwd);
+  const invocation = npmInvocation(args);
+  return run(invocation.command, invocation.args, cwd);
 }
 
 function must(result, label) {
@@ -46,7 +47,7 @@ async function main() {
   await fs.mkdir(temporary, { recursive: true });
   const worktree = path.join(temporary, "task-manager");
   must(run("git", ["clone", bundle, worktree], temporary), "Could not clone fixture bundle");
-  must(npm(["ci", "--ignore-scripts"], worktree), "Could not install fixture dependencies");
+  must(npm(["ci", "--ignore-scripts", "--no-audit", "--no-fund"], worktree), "Could not install fixture dependencies");
 
   must(run("git", ["checkout", optimistic.baseCommit], worktree), "Could not checkout optimistic base");
   must(npm(["run", "test"], worktree), "Normal suite must pass at optimistic base");

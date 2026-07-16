@@ -1,7 +1,8 @@
 import { execFileSync } from "node:child_process";
-import { promises as fs, existsSync } from "node:fs";
+import { promises as fs } from "node:fs";
 import os from "node:os";
 import path from "node:path";
+import { npmInvocation } from "./npm-runner.mjs";
 
 const root = process.cwd();
 const source = path.join(os.tmpdir(), `understudy-fixture-${Date.now()}`);
@@ -13,10 +14,8 @@ function run(command, args, cwd = source) {
 }
 
 function runNpm(args) {
-  if (process.env.npm_execpath && existsSync(process.env.npm_execpath)) {
-    return run(process.execPath, [process.env.npm_execpath, ...args]);
-  }
-  return run(process.platform === "win32" ? "npm.cmd" : "npm", args);
+  const invocation = npmInvocation(args);
+  return run(invocation.command, invocation.args);
 }
 
 async function write(relativePath, content) {
@@ -176,13 +175,13 @@ async function commit(message) {
 async function main() {
   await fs.rm(source, { recursive: true, force: true });
   await fs.mkdir(source, { recursive: true });
-  await write(".gitignore", "node_modules\\n");
+  await write(".gitignore", "node_modules\n");
   await write("package.json", packageJson);
   await write("tsconfig.json", JSON.stringify({ compilerOptions: { target: "ES2022", module: "ESNext", moduleResolution: "bundler", strict: true, jsx: "react-jsx", skipLibCheck: true }, include: ["src", "tests"] }, null, 2));
   await write("src/task-manager.ts", baselineTaskManager);
   await write("src/TaskList.tsx", component);
   await write("tests/task-manager.test.ts", normalTests);
-  runNpm(["install", "--save-dev", "vitest@latest", "typescript@latest", "@types/node@latest", "@types/react@latest"]);
+  runNpm(["install", "--save-dev", "vitest@latest", "typescript@latest", "@types/node@latest", "@types/react@latest", "--no-audit", "--no-fund"]);
   run("git", ["init"]);
   run("git", ["config", "user.name", "Understudy Fixture"]);
   run("git", ["config", "user.email", "fixture@understudy.local"]);

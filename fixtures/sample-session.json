@@ -1,0 +1,123 @@
+{
+  "session": {
+    "id": "00000000-0000-4000-8000-000000000001",
+    "challengeId": "optimistic-rollback",
+    "createdAt": "2026-07-15T11:38:00.000Z",
+    "worktreePath": "runtime/sessions/sample-session/worktree",
+    "status": "completed",
+    "plan": {
+      "answers": [
+        "Complete the task immediately, then restore its earlier state if saving fails.",
+        "I would trace the completion mutation and the rejected-save path in the task manager.",
+        "A rejected save must not leave the task marked complete or hide the error."
+      ],
+      "aiFeedback": "Good plan: you named the optimistic update, the failure boundary, and the state that must be restored."
+    },
+    "attempts": [
+      {
+        "at": "2026-07-15T11:40:00.000Z",
+        "normalSuite": {
+          "passed": true,
+          "output": "Tests 2 passed\n\nPASS  src/task-manager.test.ts",
+          "exitCode": 0,
+          "total": 2,
+          "failures": []
+        },
+        "behavioral": {
+          "passed": false,
+          "output": "Tests 1 failed\nexpected task.done to be false after the save rejection",
+          "exitCode": 1,
+          "total": 1,
+          "failures": ["expected task.done to be false after the save rejection"]
+        }
+      },
+      {
+        "at": "2026-07-15T11:45:00.000Z",
+        "normalSuite": {
+          "passed": true,
+          "output": "Tests 2 passed\n\nPASS  src/task-manager.test.ts",
+          "exitCode": 0,
+          "total": 2,
+          "failures": []
+        },
+        "behavioral": {
+          "passed": true,
+          "output": "Tests 1 passed\n\nPASS  tests/challenge.test.ts",
+          "exitCode": 0,
+          "total": 1,
+          "failures": []
+        }
+      }
+    ],
+    "hints": [
+      {
+        "level": 1,
+        "at": "2026-07-15T11:42:00.000Z",
+        "text": "Think about preserving the earlier task state before applying the optimistic update."
+      }
+    ],
+    "explainBack": {
+      "question": "Why must the earlier task state be saved before an optimistic update?",
+      "answer": "The optimistic update changes what the UI shows immediately. Keeping the previous task lets the rejected save restore the exact state the learner started from, while the error remains visible.",
+      "aiFeedback": "You connected the snapshot to both rollback correctness and honest error handling."
+    },
+    "reflection": "You reached the intended behavior after one focused concept hint. The first attempt showed the normal suite was green while the behavioral check exposed the missing rollback; your second attempt preserved the prior state and kept the failure visible.",
+    "timeline": [
+      {
+        "type": "plan_submitted",
+        "at": "2026-07-15T11:39:00.000Z",
+        "meta": { "answerCount": 3 }
+      },
+      {
+        "type": "attempt",
+        "at": "2026-07-15T11:40:00.000Z",
+        "meta": { "normalPassed": true, "behavioralPassed": false }
+      },
+      {
+        "type": "signal_failure",
+        "at": "2026-07-15T11:41:00.000Z",
+        "meta": { "assertion": "expected task.done to be false after the save rejection" }
+      },
+      {
+        "type": "hint",
+        "at": "2026-07-15T11:42:00.000Z",
+        "meta": { "level": 1 }
+      },
+      {
+        "type": "attempt",
+        "at": "2026-07-15T11:45:00.000Z",
+        "meta": { "normalPassed": true, "behavioralPassed": true }
+      },
+      {
+        "type": "all_passed",
+        "at": "2026-07-15T11:45:00.000Z",
+        "meta": { "attempts": 2 }
+      },
+      {
+        "type": "explained",
+        "at": "2026-07-15T11:47:00.000Z",
+        "meta": {}
+      }
+    ]
+  },
+  "diff": {
+    "stat": " src/task-manager.ts | 8 +++++++-\n 1 file changed, 7 insertions(+), 1 deletion(-)",
+    "shortstat": "1 file changed, 7 insertions(+), 1 deletion(-)",
+    "addedLines": [
+      "+    const previous = this.getTask(id);",
+      "+    if (!previous) throw new Error(\"Task not found\");",
+      "+    this.tasks = this.tasks.map((item) => item.id === id ? nextTask : item);",
+      "+    try { await this.saveTask(nextTask); }",
+      "+    catch { this.tasks = this.tasks.map((item) => item.id === id ? previous : item); }"
+    ]
+  },
+  "learnerDiff": {
+    "files": ["src/task-manager.ts"],
+    "patch": "diff --git a/src/task-manager.ts b/src/task-manager.ts\nindex a08d57a..learner 100644\n--- a/src/task-manager.ts\n+++ b/src/task-manager.ts\n@@ -18,5 +18,11 @@ export class TaskManager {\n-    await this.saveTask(nextTask);\n+    const previous = this.getTask(id);\n+    if (!previous) throw new Error(\"Task not found\");\n+    const nextTask = { ...previous, done: !previous.done };\n+    this.tasks = this.tasks.map((item) => item.id === id ? nextTask : item);\n+    try { await this.saveTask(nextTask); }\n+    catch { this.tasks = this.tasks.map((item) => item.id === id ? previous : item); }\n"
+  },
+  "referenceDiff": {
+    "commit": "9f27b6c7a0c92636f543f2d4874a4863d6624254",
+    "files": ["src/task-manager.ts"],
+    "patch": "diff --git a/src/task-manager.ts b/src/task-manager.ts\nindex a08d57a..219ce2e 100644\n--- a/src/task-manager.ts\n+++ b/src/task-manager.ts\n@@ -18,10 +18,16 @@ export class TaskManager {\n-    const task = this.getTask(id);\n-    if (!task) throw new Error(\"Task not found\");\n-    const nextTask = { ...task, done: !task.done };\n-    await this.saveTask(nextTask);\n+    const previous = this.getTask(id);\n+    if (!previous) throw new Error(\"Task not found\");\n+    const nextTask = { ...previous, done: !previous.done };\n+    this.error = \"\";\n+    this.tasks = this.tasks.map((item) => item.id === id ? nextTask : item);\n+    try {\n+      await this.saveTask(nextTask);\n+    } catch {\n+      this.tasks = this.tasks.map((item) => item.id === id ? previous : item);\n+      this.error = \"Could not save task. Try again.\";\n+    }\n"
+  }
+}

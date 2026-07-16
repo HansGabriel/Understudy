@@ -12,9 +12,10 @@ export async function POST(request: Request, context: RouteContext<"/api/session
     const { answers } = planInputSchema.parse(await parseJson(request));
     const session = await updateSession(id, async (current) => {
       const challenge = await getChallenge(current.challengeId);
-      current.plan = { answers, aiFeedback: await planFeedback(answers, challenge) };
+      const coaching = await planFeedback(answers, challenge);
+      current.plan = { answers, aiFeedback: coaching.text, aiSource: coaching.source };
       current.status = "coding";
-      return appendTimeline(current, "plan_submitted", { answerCount: answers.length });
+      return appendTimeline(current, "plan_submitted", { answerCount: answers.length }, coaching.source);
     });
     return Response.json(session.plan);
   } catch (error) {

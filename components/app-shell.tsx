@@ -1,8 +1,24 @@
+"use client";
+
+import { useEffect, useState, type ReactNode } from "react";
 import Link from "next/link";
 
 type AppShellProps = {
   active: "library" | "session" | "report";
-  children: React.ReactNode;
+  children: ReactNode;
+};
+
+type RecentSession = {
+  id: string;
+  challengeId: string;
+  challengeTitle: string;
+  status: "planning" | "coding" | "passed" | "completed";
+  createdAt: string;
+};
+
+type RecentPayload = {
+  sessions: RecentSession[];
+  total: number;
 };
 
 const stageLabel = {
@@ -11,7 +27,32 @@ const stageLabel = {
   report: "Review learning evidence",
 } as const;
 
+function formatSessionDate(value: string) {
+  const date = new Date(value);
+  if (Number.isNaN(date.valueOf())) return "unknown date";
+  const today = new Date();
+  if (date.toISOString().slice(0, 10) === today.toISOString().slice(0, 10)) return "today";
+  return new Intl.DateTimeFormat(undefined, { month: "short", day: "numeric" }).format(date);
+}
+
 export function AppShell({ active, children }: AppShellProps) {
+  const [recent, setRecent] = useState<RecentPayload>({ sessions: [], total: 0 });
+
+  useEffect(() => {
+    let cancelled = false;
+    fetch("/api/sessions/recent", { cache: "no-store" })
+      .then(async (response) => (response.ok ? response.json() : Promise.reject(await response.json())))
+      .then((payload: RecentPayload) => {
+        if (!cancelled) setRecent(payload);
+      })
+      .catch(() => {
+        // The shell should remain useful if the local session index is unavailable.
+      });
+    return () => {
+      cancelled = true;
+    };
+  }, []);
+
   return (
     <main className="app-shell" style={{ padding: 0 }}>
       <section className="product-frame" style={{ maxWidth: "none", minHeight: "100vh", border: 0, borderRadius: 0, boxShadow: "none" }} aria-label="Understudy application">
@@ -40,7 +81,24 @@ export function AppShell({ active, children }: AppShellProps) {
                 <span className={`nav-item ${active === "report" ? "active" : ""}`}>Review evidence</span>
               </nav>
             </div>
-            <p className="sidebar-foot">Git worktrees<br />Tests decide outcomes</p>
+            <div className="recent-sessions">
+              <p className="eyebrow">Recent</p>
+              {recent.sessions.length ? (
+                <div className="recent-list">
+                  {recent.sessions.map((session) => (
+                    <Link
+                      className="recent-session"
+                      href={session.status === "completed" ? `/report/${session.id}` : `/session/${session.id}`}
+                      key={session.id}
+                    >
+                      <strong>{session.challengeTitle}</strong>
+                      <span>{session.status === "completed" ? "passed" : session.status} · {formatSessionDate(session.createdAt)}</span>
+                    </Link>
+                  ))}
+                </div>
+              ) : <p className="recent-empty">No saved sessions yet.</p>}
+            </div>
+            <p className="sidebar-foot">{recent.total} sessions saved<br />Git worktrees<br />Tests decide outcomes</p>
           </aside>
           <section className="workspace">{children}</section>
         </div>

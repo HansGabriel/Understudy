@@ -2,10 +2,22 @@ import { execFile as execFileCallback } from "node:child_process";
 import { existsSync, promises as fs } from "node:fs";
 import path from "node:path";
 import { promisify } from "node:util";
+import { assertFixtureAvailable } from "@/lib/fixture";
 import { assertInside, fixtureBundlePath, fixtureRepoPath, runtimeRoot, sessionDirectory, sessionWorktreePath, sessionsRoot } from "@/lib/paths";
 import { installFixtureDependencies } from "@/lib/test-runner";
 
 const execFile = promisify(execFileCallback);
+
+export { assertFixtureAvailable, fixtureIsAvailable, fixtureSetupMessage, FixtureUnavailableError } from "@/lib/fixture";
+
+export type DiffDetails = {
+  patch: string;
+  files: string[];
+};
+
+export type ReferenceDiff = DiffDetails & {
+  commit: string;
+};
 
 async function git(args: string[], cwd = runtimeRoot) {
   try {
@@ -19,7 +31,7 @@ async function git(args: string[], cwd = runtimeRoot) {
 
 export async function ensureFixture() {
   if (existsSync(path.join(fixtureRepoPath, ".git"))) return fixtureRepoPath;
-  if (!existsSync(fixtureBundlePath)) throw new Error("Fixture bundle is missing. Run npm run fixture:build.");
+  assertFixtureAvailable();
   await fs.mkdir(runtimeRoot, { recursive: true });
   await git(["clone", fixtureBundlePath, fixtureRepoPath], runtimeRoot);
   return fixtureRepoPath;
@@ -51,16 +63,53 @@ export async function removeWorktree(sessionId: string) {
 
 export async function diffSummary(worktreePath: string) {
   const safeWorktree = assertInside(sessionsRoot, worktreePath);
-  const stat = await git(["-C", safeWorktree, "diff", "--stat"]);
-  const shortstat = await git(["-C", safeWorktree, "diff", "--shortstat"]);
-  return { stat, shortstat };
+  const [stat, shortstat, patch] = await Promise.all([
+    git(["-C", safeWorktree, "diff", "--stat"]),
+    git(["-C", safeWorktree, "diff", "--shortstat"]),
+    git(["-C", safeWorktree, "diff", "--no-ext-diff", "--unified=0", "--"]),
+  ]);
+  return { stat, shortstat, addedLines: extractAddedLines(patch) };
+}
+
+export function extractAddedLines(patch: string, limit = 6) {
+  return patch
+    .split(/\r?\n/)
+    .filter((line) => line.startsWith("+") && !line.startsWith("+++"))
+    .slice(0, limit)
+    .map((line) => line.length > 240 ? `${line.slice(0, 237)}...` : line);
+}
+
+function fileList(output: string) {
+  return output.split(/\r?\n/).map((file) => file.trim()).filter(Boolean);
+}
+
+export async function diffDetails(worktreePath: string): Promise<DiffDetails> {
+  const safeWorktree = assertInside(sessionsRoot, worktreePath);
+  const [patch, names] = await Promise.all([
+    git(["-C", safeWorktree, "diff", "--no-ext-diff", "--unified=3", "--"]),
+    git(["-C", safeWorktree, "diff", "--name-only", "--"]),
+  ]);
+  return { patch, files: fileList(names) };
+}
+
+export async function referenceDiff(baseCommit: string, referenceCommit: string): Promise<ReferenceDiff> {
+  const fixture = await ensureFixture();
+  const [patch, names] = await Promise.all([
+    git(["-C", fixture, "diff", "--no-ext-diff", "--unified=3", baseCommit, referenceCommit, "--"]),
+    git(["-C", fixture, "diff", "--name-only", baseCommit, referenceCommit, "--"]),
+  ]);
+  return { commit: referenceCommit, patch, files: fileList(names) };
 }
 
 export async function canOpenVSCode() {
-  try {
-    await execFile("code", ["--version"], { windowsHide: true, timeout: 2_000 });
-    return true;
-  } catch {
-    return false;
+  const candidates = process.platform === "win32" ? ["code.cmd", "code"] : ["code"];
+  for (const candidate of candidates) {
+    try {
+      await execFile(candidate, ["--version"], { windowsHide: true, timeout: 2_000 });
+      return true;
+    } catch {
+      // Try the next platform-specific executable name.
+    }
   }
+  return false;
 }

@@ -1,7 +1,7 @@
 import OpenAI from "openai";
 import { zodTextFormat } from "openai/helpers/zod";
 import { z } from "zod";
-import type { Challenge, SessionRecord } from "@/lib/schemas";
+import type { Challenge, CoachingResult, SessionRecord } from "@/lib/schemas";
 
 const coachResponseSchema = z.object({ feedback: z.string().min(1).max(900) });
 
@@ -17,9 +17,9 @@ function isSafeCoachingText(value: string) {
   return value.length <= 700 && !/```|`|=>|\b(?:const|let|var|function|await|try|catch|return)\b|\w+\s*\(|\.\w+\s*\(/i.test(value);
 }
 
-async function coach(prompt: string, fallback: string, accept: (feedback: string) => boolean = isSafeCoachingText) {
+async function coach(prompt: string, fallback: string, accept: (feedback: string) => boolean = isSafeCoachingText): Promise<CoachingResult> {
   const apiKey = process.env.OPENAI_API_KEY;
-  if (!apiKey) return fallback;
+  if (!apiKey) return { text: fallback, source: "authored" };
   try {
     const client = new OpenAI({ apiKey, timeout: 8_000, maxRetries: 0 });
     const response = await client.responses.parse({
@@ -32,9 +32,9 @@ async function coach(prompt: string, fallback: string, accept: (feedback: string
       text: { format: zodTextFormat(coachResponseSchema, "coach_response") },
     });
     const feedback = response.output_parsed?.feedback?.trim();
-    return feedback && accept(feedback) ? feedback : fallback;
+    return feedback && accept(feedback) ? { text: feedback, source: "ai" } : { text: fallback, source: "authored" };
   } catch {
-    return fallback;
+    return { text: fallback, source: "authored" };
   }
 }
 

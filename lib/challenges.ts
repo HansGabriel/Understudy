@@ -2,6 +2,7 @@ import { promises as fs } from "node:fs";
 import path from "node:path";
 import { challengeSchema, publicChallengeSchema, type Challenge, type PublicChallenge } from "@/lib/schemas";
 import { challengesRoot } from "@/lib/paths";
+import { assertFixtureAvailable } from "@/lib/fixture";
 
 const tags: Record<string, string> = {
   "optimistic-rollback": "async · error handling",
@@ -41,5 +42,14 @@ export function toPublicChallenge(challenge: Challenge): PublicChallenge {
 }
 
 export async function listPublicChallenges() {
+  assertFixtureAvailable();
   return (await listChallenges()).map(toPublicChallenge);
+}
+
+export async function recommendNextChallenge(completedChallengeIds: Iterable<string>) {
+  const completed = new Set(completedChallengeIds);
+  const next = (await listChallenges())
+    .filter((challenge) => !completed.has(challenge.id))
+    .sort((left, right) => left.difficulty - right.difficulty || left.id.localeCompare(right.id))[0];
+  return next ? toPublicChallenge(next) : null;
 }

@@ -11,9 +11,18 @@ const allowedScripts = new Set(["test", "test:challenge"]);
 const stripAnsi = (value: string) => value.replace(/\u001b\[[0-?]*[ -/]*[@-~]/g, "");
 
 function npmCliPath() {
-  if (process.env.npm_execpath && existsSync(process.env.npm_execpath)) return process.env.npm_execpath;
-  const bundled = path.join(path.dirname(process.execPath), "node_modules", "npm", "bin", "npm-cli.js");
-  if (existsSync(bundled)) return bundled;
+  const candidates = new Set<string>();
+  if (process.env.npm_execpath) candidates.add(path.resolve(process.cwd(), process.env.npm_execpath));
+  const nodeDirectory = path.dirname(process.execPath);
+  candidates.add(path.join(nodeDirectory, "node_modules", "npm", "bin", "npm-cli.js"));
+  candidates.add(path.resolve(nodeDirectory, "..", "lib", "node_modules", "npm", "bin", "npm-cli.js"));
+  for (const pathEntry of (process.env.PATH ?? "").split(path.delimiter).filter(Boolean)) {
+    candidates.add(path.join(pathEntry, "npm-cli.js"));
+    candidates.add(path.join(pathEntry, "node_modules", "npm", "bin", "npm-cli.js"));
+    candidates.add(path.resolve(pathEntry, "..", "lib", "node_modules", "npm", "bin", "npm-cli.js"));
+  }
+  const found = [...candidates].find((candidate) => existsSync(candidate));
+  if (found) return found;
   throw new Error("Could not find the npm CLI. Start Understudy with npm or install Node.js with npm.");
 }
 
@@ -55,7 +64,7 @@ export async function runScript(worktreePath: string, scriptName: string) {
 }
 
 export async function installFixtureDependencies(worktreePath: string) {
-  const result = await runNpm(worktreePath, ["ci", "--ignore-scripts"]);
+  const result = await runNpm(worktreePath, ["ci", "--ignore-scripts", "--no-audit", "--no-fund"]);
   if (!result.passed) throw new Error(`Fixture dependency installation failed.\n${result.output}`);
 }
 
