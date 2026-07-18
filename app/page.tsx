@@ -34,6 +34,7 @@ export default function LibraryPage() {
   const router = useRouter();
   const [challenges, setChallenges] = useState<PublicChallenge[]>([]);
   const [error, setError] = useState("");
+  const [challengeLoadComplete, setChallengeLoadComplete] = useState(false);
   const [busy, setBusy] = useState("");
   const [challengeProgress, setChallengeProgress] = useState<Record<string, ChallengeProgress>>({});
   const [hasSessions, setHasSessions] = useState(false);
@@ -55,8 +56,8 @@ export default function LibraryPage() {
     let cancelled = false;
     fetch("/api/challenges")
       .then(async (response) => response.ok ? response.json() : Promise.reject(await response.json()))
-      .then((data: PublicChallenge[]) => { if (!cancelled) setChallenges(data); })
-      .catch((reason) => { if (!cancelled) setError(reason.error ?? "Could not load replay challenges."); });
+      .then((data: PublicChallenge[]) => { if (!cancelled) { setChallenges(data); setChallengeLoadComplete(true); } })
+      .catch((reason) => { if (!cancelled) { setError(reason.error ?? "Could not load replay challenges."); setChallengeLoadComplete(true); } });
     fetch("/api/sessions/recent")
       .then(async (response) => response.ok ? response.json() : Promise.reject(await response.json()))
       .then((data: RecentPayload) => {
@@ -148,10 +149,7 @@ export default function LibraryPage() {
           <p className="eyebrow">Could not load the replay library</p>
           <h2>Try refreshing the local app.</h2>
           <p>{error}</p>
-        </article> : selectedProject.mode === "linked" ? <article className="card setup-card project-empty-state"><p className="eyebrow">Stage B preview</p><h2>No challenges yet — pick a commit to replay</h2><p>This repository is registered and ready for the next project-library step. Commit discovery is intentionally not included in this pass.</p></article> : entries.length ? entries.map((entry) => entry.kind === "challenge"
-          ? <ChallengeCard key={entry.challenge.id} challenge={entry.challenge} progress={challengeProgress[entry.challenge.id]} busy={busy === entry.challenge.id} onReplay={replay} />
-          : <article className="coming-soon" key={entry.id}><span className="replay-tag">IN AUTHORING</span><h2>{entry.title}</h2><p>{entry.description}</p><div className="chip-row">{entry.tags.map((tag) => <span className="chip" key={tag}>{tag}</span>)}</div></article>)
-          : <article className="card challenge-card"><div><p className="eyebrow">Loading local challenge manifests</p><h2>Preparing the replay library</h2><p>Checking the public manifest data while reference commits remain server-only.</p></div></article>}
+        </article> : entries.length ? entries.map(renderEntry) : challengeLoadComplete ? <article className="card setup-card"><p className="eyebrow">Replay library</p><h2>0 challenges loaded.</h2><p>Check the server logs for an invalid challenge manifest, then reload the local app.</p></article> : <article className="card challenge-card"><div><p className="eyebrow">Loading local challenge manifests</p><h2>Preparing the replay library</h2><p>Checking the public manifest data while reference commits remain server-only.</p></div></article>}
         <p className="sample-report-link"><Link href="/report/sample">View a sample mastery report</Link></p>
         {selectedProject.id === "task-manager" && baseChallengeForForge ? <VariationForge challengeId={baseChallengeForForge.id} baseChallenges={visibleChallenges.filter((challenge) => !challenge.drafted && !challenge.id.startsWith("variation-"))} onCreated={handleDraftedChallenge} /> : null}
       </section>

@@ -61,7 +61,7 @@ describe("linked project commit replays", () => {
   it("detects added tests, self-validates, and caches the result", async () => {
     const first = await listProjectCommits(projectId);
     const commit = first.find((entry) => entry.sha === testCommit);
-    expect(commit).toMatchObject({ addsTests: true, replayable: false, validationStatus: "pending", badge: "validating…" });
+    expect(commit).toMatchObject({ addsTests: true, replayable: false, validationStatus: "pending", badge: "validates on create" });
     expect(commit?.filesChanged).toContain("tests/edge.test.ts");
     expect(first.find((entry) => entry.sha !== testCommit)).toMatchObject({ addsTests: false, replayable: false, badge: "no automatic edge-case check" });
     expect(runScriptWithArgs).toHaveBeenCalledTimes(0);

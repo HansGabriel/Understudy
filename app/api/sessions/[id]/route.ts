@@ -20,7 +20,7 @@ export async function GET(_request: Request, context: RouteContext<"/api/session
     ]);
     const recommendedChallenge = await recommendNextChallenge(sessions.filter((item) => item.status === "completed" && item.projectId === session.projectId).map((item) => item.challengeId), session.projectId);
     if (session.status !== "completed") {
-      return Response.json({ session, canOpenInVSCode, diff, recommendedChallenge, challenge: { ...toPublicChallenge(challenge), planQuestions: challenge.planQuestions } });
+      return Response.json({ session, canOpenInVSCode, coachAvailable: Boolean(process.env.OPENAI_API_KEY), diff, recommendedChallenge, challenge: { ...toPublicChallenge(challenge), planQuestions: challenge.planQuestions } });
     }
 
     const [reference, learner] = await Promise.all([
@@ -34,6 +34,7 @@ export async function GET(_request: Request, context: RouteContext<"/api/session
     return Response.json({
       session,
       canOpenInVSCode,
+      coachAvailable: Boolean(process.env.OPENAI_API_KEY),
       diff,
       recommendedChallenge,
       referenceDiff: reference,

@@ -2,7 +2,7 @@ import { randomUUID } from "node:crypto";
 import { promises as fs } from "node:fs";
 import path from "node:path";
 import { challengeSchema, type Challenge } from "@/lib/schemas";
-import { assertInside, projectCacheDirectory, projectsCacheRoot } from "@/lib/paths";
+import { assertInside, projectCacheDirectory } from "@/lib/paths";
 
 function cachePath(projectId: string, relativePath: string) {
   const directory = projectCacheDirectory(projectId);
@@ -93,12 +93,4 @@ export async function saveHiddenFile(projectId: string, sha: string, relativePat
   await fs.mkdir(path.dirname(target), { recursive: true });
   await fs.writeFile(target, content, "utf8");
   return target;
-}
-
-export function isInsideProjectCache(projectId: string, candidate: string) {
-  return assertInside(projectCacheDirectory(projectId), candidate);
-}
-
-export function projectCacheRoot() {
-  return projectsCacheRoot;
 }

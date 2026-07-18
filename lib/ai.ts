@@ -60,6 +60,10 @@ function containsFullFunctionBody(value: string) {
   return /\b(?:function|class)\s+[\w$]+[\s\S]{0,80}\{[\s\S]{0,500}\}/i.test(value) || /=>\s*\{[\s\S]{0,500}\}/.test(value);
 }
 
+function containsSolutionSyntax(value: string) {
+  return /\b(?:const|let|var|return|import|export)\b|=>/i.test(value);
+}
+
 function codeFenceLineCount(value: string) {
   return [...value.matchAll(/```[^\n]*\n?([\s\S]*?)```/g)].reduce((count, match) => count + (match[1]?.split(/\r?\n/).filter(Boolean).length ?? 0), 0);
 }
@@ -95,8 +99,8 @@ export function acceptsCoachFeedback(feedback: string, context: CoachContext) {
   if (/\b(?:reference implementation|reference diff|full patch|solution patch)\b/i.test(text)) return false;
   if (/(?:^|\s)(?:[\w.-]+[\\/])+[^\s:]+:\d+(?:\s|$)/m.test(text) || containsFullFunctionBody(text)) return false;
   const fencedLines = codeFenceLineCount(text);
-  if (escalation === "concept" && containsCodeLikeText(text)) return false;
-  if (escalation === "pseudocode" && /\b(?:const|let|var|return|import|export)\b|=>/i.test(text)) return false;
+  if (escalation === "concept" && (containsCodeLikeText(text) || containsSolutionSyntax(text))) return false;
+  if (escalation === "pseudocode" && containsSolutionSyntax(text)) return false;
   if (escalation === "pseudocode" && fencedLines > 5) return false;
   if (escalation === "partial" && (fencedLines > 5 || codeShapeLineCount(text) > 8)) return false;
   return true;

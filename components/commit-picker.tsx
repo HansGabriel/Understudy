@@ -62,11 +62,11 @@ export function CommitPicker({ projectId, onChallengeCreated }: CommitPickerProp
   }
 
   return <section className="card commit-picker">
-    <div className="commit-picker-head"><div><p className="eyebrow">Linked project / commit picker</p><h2>Choose a real change to replay.</h2><p>Commits that add tests are checked at their parent and reference commits before they earn the self-validating badge.</p></div><span className="technical-label">last 50 commits</span></div>
+     <div className="commit-picker-head"><div><p className="eyebrow">Linked project / commit picker</p><h2>Choose a real change to replay.</h2><p>Commits that add tests validate when you create a replay; only a parent-fails/reference-passes result earns the self-validating badge.</p></div><span className="technical-label">last 50 commits</span></div>
     {error ? <p className="notice error-notice">{error}</p> : null}
      {!commits.length && !error ? <p className="commit-empty">Scanning recent history…</p> : <div className="commit-list">
       {commits.map((commit) => <article className="commit-row" key={commit.sha}>
-         <div><strong>{commit.subject || "(no subject)"}</strong><span className="commit-meta">{commit.sha.slice(0, 10)} · {new Date(commit.date).toLocaleDateString()} · {commit.filesChanged.length} file{commit.filesChanged.length === 1 ? "" : "s"}</span><span className={`commit-badge ${commit.replayable ? "replayable" : commit.validationStatus === "pending" ? "pending" : "unchecked"}`}>{commit.badge}</span></div>
+          <div><strong>{commit.subject || "(no subject)"}</strong><span className="commit-meta">{commit.sha.slice(0, 10)} · {new Date(commit.date).toLocaleDateString()} · {commit.filesChanged.length} file{commit.filesChanged.length === 1 ? "" : "s"}</span><span className={`commit-badge ${commit.replayable ? "replayable" : commit.validationStatus === "pending" ? "pending" : "unchecked"}`}>{commit.badge}</span></div>
          <button className="button secondary small" disabled={busy !== ""} onClick={() => void createReplay(commit.sha)}>{busy === commit.sha ? (commit.validationStatus === "pending" ? "Validating…" : "Drafting...") : "Create replay"}</button>
       </article>)}
     </div>}

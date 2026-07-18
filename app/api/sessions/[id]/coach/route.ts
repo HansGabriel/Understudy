@@ -44,13 +44,13 @@ export async function POST(request: Request, context: RouteContext<"/api/session
       } as const;
       const coaching = await coachMessage(message, coachContext);
       coachingResult = coaching;
-      if (coaching.rejected) {
-        current.lastCoaching = coaching;
+      if (!process.env.OPENAI_API_KEY) {
         return current;
       }
       const at = new Date().toISOString();
       current.coachThread.push({ role: "learner", text: message, at });
       current.coachThread.push({ role: "coach", text: coaching.text, at: new Date().toISOString(), source: coaching.source });
+      current.lastCoaching = coaching;
       return appendTimeline(current, "coach", { messageCount: learnerMessages + 1, escalation: coachEscalation(coachContext) }, coaching.source);
     });
     const used = session.coachThread.filter((entry) => entry.role === "learner").length;

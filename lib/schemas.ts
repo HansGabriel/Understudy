@@ -4,6 +4,7 @@ export const challengeSchema = z.object({
   id: z.string().regex(/^[a-z0-9-]+$/),
   projectId: z.string().regex(/^[a-z0-9-]+$/).default("task-manager"),
   drafted: z.boolean().default(false),
+  draftedBy: z.enum(["ai", "learner"]).optional(),
   mode: z.literal("replay"),
   title: z.string(),
   baseCommit: z.string().min(7),

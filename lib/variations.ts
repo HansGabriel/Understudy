@@ -70,6 +70,7 @@ export async function publishVariation(baseChallenge: Challenge, proposal: Varia
     id: validation.variationId,
     projectId,
     drafted: true,
+    draftedBy: "ai",
     mode: "replay",
     title: proposal.title,
     baseCommit: baseChallenge.referenceCommit,

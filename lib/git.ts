@@ -121,9 +121,9 @@ export async function removeWorktree(sessionId: string, projectId = "task-manage
 export async function diffSummary(worktreePath: string) {
   const safeWorktree = assertInside(sessionsRoot, worktreePath);
   const [stat, shortstat, patch] = await Promise.all([
-    git(["-C", safeWorktree, "diff", "--stat"]),
-    git(["-C", safeWorktree, "diff", "--shortstat"]),
-    git(["-C", safeWorktree, "diff", "--no-ext-diff", "--unified=0", "--"]),
+    git(["-C", safeWorktree, "diff", "HEAD", "--stat"]),
+    git(["-C", safeWorktree, "diff", "HEAD", "--shortstat"]),
+    git(["-C", safeWorktree, "diff", "HEAD", "--no-ext-diff", "--unified=0", "--"]),
   ]);
   return { stat, shortstat, addedLines: extractAddedLines(patch) };
 }
@@ -143,8 +143,8 @@ function fileList(output: string) {
 export async function diffDetails(worktreePath: string): Promise<DiffDetails> {
   const safeWorktree = assertInside(sessionsRoot, worktreePath);
   const [patch, names] = await Promise.all([
-    git(["-C", safeWorktree, "diff", "--no-ext-diff", "--unified=3", "--"]),
-    git(["-C", safeWorktree, "diff", "--name-only", "--"]),
+    git(["-C", safeWorktree, "diff", "HEAD", "--no-ext-diff", "--unified=3", "--"]),
+    git(["-C", safeWorktree, "diff", "HEAD", "--name-only", "--"]),
   ]);
   return { patch, files: fileList(names) };
 }

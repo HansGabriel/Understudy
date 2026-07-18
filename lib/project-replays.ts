@@ -48,7 +48,7 @@ function safeRelativePath(value: string) {
 
 function badge(status: ProjectCommitValidation["status"] | "pending") {
   if (status === "replayable") return "replayable · self-validating";
-  if (status === "pending") return "validating…";
+  if (status === "pending") return "validates on create";
   if (status === "unverified") return "validation will retry on create";
   return "no automatic edge-case check";
 }
@@ -197,6 +197,7 @@ export async function createLinkedChallenge(projectId: string, shaInput: string)
     id: `${projectId}-${context.commit.sha.slice(0, 12)}`,
     projectId,
     drafted: Boolean(drafted),
+    draftedBy: drafted ? "ai" : undefined,
     mode: "replay",
     title: draft.title,
     baseCommit: context.parent,
@@ -226,7 +227,7 @@ export async function updateLinkedChallengeDraft(projectId: string, challengeId:
   const existing = await getChallenge(challengeId);
   if (existing.projectId !== projectId) throw new Error("Challenge does not belong to this project.");
   if ((await listSessions()).some((session) => session.challengeId === challengeId)) throw new Error("Draft editing is only available before first use.");
-  const challenge = challengeSchema.parse({ ...existing, ...draft });
+  const challenge = challengeSchema.parse({ ...existing, ...draft, drafted: true, draftedBy: "learner" });
   await saveLinkedChallenge(challenge);
   return challenge;
 }

@@ -1,6 +1,6 @@
 import { randomUUID } from "node:crypto";
 import { promises as fs } from "node:fs";
-import { describe, expect, it } from "vitest";
+import { describe, expect, it, vi } from "vitest";
 import { POST as sendCoachMessage } from "@/app/api/sessions/[id]/coach/route";
 import { coachEscalation, acceptsCoachFeedback, redactCoachContext, type CoachContext } from "@/lib/ai";
 import { listChallenges } from "@/lib/challenges";
@@ -58,6 +58,7 @@ describe("coach panel", () => {
     };
     expect(coachEscalation(base)).toBe("concept");
     expect(acceptsCoachFeedback("Try this:\n```ts\nconst previous = task;\n```", base)).toBe(false);
+    expect(acceptsCoachFeedback("return tasks.filter((task) => !task.done);", base)).toBe(false);
 
     const levelTwo = { ...base, revealedHints: [{ level: 2, text: "Ask a sharper question." }] };
     expect(coachEscalation(levelTwo)).toBe("pseudocode");
@@ -102,8 +103,8 @@ describe("coach panel", () => {
       expect(payload.coaching.source).toBe("authored");
       expect(payload.coaching.text).toMatch(/OPENAI_API_KEY/);
       const saved = await loadSession(id);
-      expect(saved.coachThread).toHaveLength(2);
-      expect(saved.timeline.at(-1)?.type).toBe("coach");
+      expect(saved.coachThread).toHaveLength(0);
+      expect(saved.timeline.at(-1)?.type).not.toBe("coach");
     } finally {
       if (originalKey === undefined) delete process.env.OPENAI_API_KEY;
       else process.env.OPENAI_API_KEY = originalKey;
@@ -125,6 +126,37 @@ describe("coach panel", () => {
       expect((await response.json()).error).toMatch(/limit of 12/i);
       expect((await loadSession(id)).coachThread).toHaveLength(24);
     } finally {
+      await fs.rm(sessionDirectory(id), { recursive: true, force: true });
+    }
+  });
+});
+
+describe("rejected coach exchanges", () => {
+  it("append the learner question and authored rejection to the ration", async () => {
+    const id = randomUUID();
+    const originalKey = process.env.OPENAI_API_KEY;
+    process.env.OPENAI_API_KEY = "test-key";
+    const ai = await import("@/lib/ai");
+    const message = vi.spyOn(ai, "coachMessage").mockResolvedValue({
+      text: "Let us stay with the observed evidence and ask what the check can distinguish.",
+      source: "authored",
+      rejected: true,
+    });
+    try {
+      await saveSession(sessionRecord(id));
+      const response = await coachRequest(id, "What evidence should I compare?");
+      const payload = await response.json();
+      expect(response.status).toBe(200);
+      expect(payload.used).toBe(1);
+      const saved = await loadSession(id);
+      expect(saved.coachThread.map((entry) => entry.role)).toEqual(["learner", "coach"]);
+      expect(saved.coachThread.at(-1)?.source).toBe("authored");
+      expect(saved.timeline.at(-1)).toMatchObject({ type: "coach", source: "authored" });
+      expect(message).toHaveBeenCalledOnce();
+    } finally {
+      message.mockRestore();
+      if (originalKey === undefined) delete process.env.OPENAI_API_KEY;
+      else process.env.OPENAI_API_KEY = originalKey;
       await fs.rm(sessionDirectory(id), { recursive: true, force: true });
     }
   });

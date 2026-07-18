@@ -4,31 +4,17 @@ import { promises as fs } from "node:fs";
 import path from "node:path";
 import { promisify } from "node:util";
 import type { CheckResult } from "@/lib/schemas";
+import { npmInvocation } from "../scripts/npm-runner-core.mjs";
 
 const execFile = promisify(execFileCallback);
 const timeout = 120_000;
 const allowedScripts = new Set(["test", "test:challenge"]);
 const stripAnsi = (value: string) => value.replace(/\u001b\[[0-?]*[ -/]*[@-~]/g, "");
 
-function npmCliPath() {
-  const candidates = new Set<string>();
-  if (process.env.npm_execpath) candidates.add(path.resolve(process.cwd(), process.env.npm_execpath));
-  const nodeDirectory = path.dirname(process.execPath);
-  candidates.add(path.join(nodeDirectory, "node_modules", "npm", "bin", "npm-cli.js"));
-  candidates.add(path.resolve(nodeDirectory, "..", "lib", "node_modules", "npm", "bin", "npm-cli.js"));
-  for (const pathEntry of (process.env.PATH ?? "").split(path.delimiter).filter(Boolean)) {
-    candidates.add(path.join(pathEntry, "npm-cli.js"));
-    candidates.add(path.join(pathEntry, "node_modules", "npm", "bin", "npm-cli.js"));
-    candidates.add(path.resolve(pathEntry, "..", "lib", "node_modules", "npm", "bin", "npm-cli.js"));
-  }
-  const found = [...candidates].find((candidate) => existsSync(candidate));
-  if (found) return found;
-  throw new Error("Could not find the npm CLI. Start Understudy with npm or install Node.js with npm.");
-}
-
 export async function runNpm(cwd: string, args: string[]) {
   try {
-    const result = await execFile(process.execPath, [npmCliPath(), ...args], {
+    const invocation = npmInvocation(args);
+    const result = await execFile(invocation.command, invocation.args, {
       cwd,
       timeout,
       maxBuffer: 2_000_000,
@@ -78,8 +64,6 @@ export async function installProjectDependencies(worktreePath: string) {
   const result = await runNpm(worktreePath, ["ci", "--ignore-scripts", "--no-audit", "--no-fund"]);
   if (!result.passed) throw new Error(`Project dependency installation failed.\n${result.output}`);
 }
-
-export const installFixtureDependencies = installProjectDependencies;
 
 export async function runHiddenTest(worktreePath: string, sourceTestFile: string) {
   const testsDirectory = path.resolve(worktreePath, "tests");
