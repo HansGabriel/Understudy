@@ -5,6 +5,48 @@ Goal of this plan: fix what's broken, make the product understandable to a first
 
 ---
 
+## Phase 5 — "Make it a dojo, not a dashboard" (July 17–19 UX/AI overhaul)
+
+User verdict after real use: bland, wordy, hard to grasp at a glance; linked-project tasks read as raw commits; AI coaching too thin to feel useful. Reference points: Codewars/LeetCode task presentation — a *puzzle you want to open*, not a system that explains itself. Three principles: **show the task, not the machinery; use the palette we already have; let the AI say something substantive within the pedagogy.**
+
+### 5A — Visual system pass (color + hierarchy, no layout rebuild)
+
+The "Engineering Pad" palette (Graphite/Pad/Pass green/Fail red/Signal amber/Cobalt) exists in `globals.css` but the UI reads monochrome cream. Deploy it:
+
+- **Difficulty as color**, Codewars-style: 1–2 = Pass-green chip, 3 = Signal-amber chip, 4–5 = Fail-red chip, with the dots inside the chip. One `difficulty-chip` class, used on cards + session brief + report.
+- **Tag chips get soft tinted backgrounds** (3–4 tint variants derived from Cobalt/Signal/Pass at ~12% alpha, assigned by hash of tag text) instead of uniform gray.
+- **State color-coding everywhere a state exists**: card left-border / status chip — completed = Pass green, in-progress = Cobalt, passed-awaiting-explain = Signal amber. The report's signal panels already do this; generalize it.
+- **One accent action per screen**: primary CTA solid Cobalt ("Start replay", "Run checks", "Send plan to coach"); everything else secondary/quiet. Today several same-weight buttons compete.
+- **Cut visible prose ~50% on library/session**: headline stays; the paragraph under it moves into a dismissible first-run callout. Sidebar explainer sentences shrink to one line. Eyebrow labels max 2–3 words ("THE BEHAVIOR YOU'RE REBUILDING" → "YOUR TASK").
+- **Type scale contrast**: card titles up (20→24px display), meta text down; more whitespace inside cards, tighter between sections.
+
+### 5B — Task presentation: kata cards, not commits
+
+The commit picker is the weakest screen: raw `git log` + "Create replay". The AI drafting already exists — move it BEFORE the user sees the list:
+
+- **Task board replaces commit list.** On picker load, auto-draft kata-style cards for the ~6 most promising commits (test-adding first, then feat/fix by diff size) using the existing `draftChallengeFromCommit`, cached per sha (extend the existing validation cache). Card = generated title in plain words (NOT the commit subject), one-line story, difficulty chip, tags, est. time; the sha/commit subject demoted to small mono metadata.
+- **Kata-style brief structure** everywhere (fixture + linked + variations): `story` (2–3 sentences, plain words, no jargon), `task` ("Your task: …" imperative), `requirements` (checkable list = acceptance criteria), `example` (a short before/after behavior example, text or tiny table — NOT solution code). Extend the brief schema with optional `story`/`example`; drafting + fixture manifests populate them; session brief card renders Story → Your task → Requirements → Example like a Codewars kata description.
+- **"Draft with AI" affordances**: each task card gets "Regenerate" (re-draft with a fresh angle) and the board gets a free-text input — "What do you want to practice?" — that steers drafting (bias commit selection + brief emphasis toward the topic). Both reuse `draftChallengeFromCommit` with a `guidance` parameter.
+- **Raw mode stays** behind a small "Browse raw commits" toggle for transparency.
+
+### 5C — AI depth: substantive within the pedagogy
+
+Keep the hard rules (no full solutions pre-completion, tests authoritative, escalation tiers). Loosen the muzzle:
+
+- **Plan feedback → structured per-answer response**: for each of the 3 answers, one-line strength or gap; then ONE sharpening question. Rendered as a 3-row checklist + highlighted question, not a paragraph. Raise the response budget (900 → ~1600 chars) and update the accept validator accordingly.
+- **Approach outline (opt-in, logged)**: after plan confirm, a "Suggest an approach outline" button → AI returns 3–5 high-level steps (no code, no file paths at L1-equivalence), rendered as a visual numbered stepper. Recorded like a hint (its own Independence row: "outline used"). This is the user's "visualize the plan" ask, scoped sanely.
+- **Hints get structure**: each level returns `{concept, lookAt, testIdea}` — L1 fills only `concept`, L2 adds `lookAt` (area, not file/line), L3 adds all three with file-level pointer. Rendered as labeled mini-sections instead of one sentence.
+- **Failure coaching**: always concretely states expected vs observed from the test output, then one investigation question. Two short paragraphs max.
+- **Coach**: raise reply budget, allow structured replies (short lists OK) within existing tier gates; system prompt: "be specific and useful at the current tier — vague encouragement is a failure mode."
+- **Reflection/report**: 3 bullet observations tied to timeline evidence (what the first attempt missed, what closed it, what to practice next) instead of one abstract paragraph.
+- **Forge takes a prompt**: the variation card's input accepts "describe the task you want" and passes it as guidance to `draftVariation` (validation gate unchanged).
+
+### Sequencing & scope guards
+
+Order: approved P0 fixes → 5A (half day, pure CSS/copy) → 5B (the big one, ~1 day) → 5C (half day, prompts/schemas/rendering). Feature-freeze Sunday night regardless; film Monday. Do NOT: rebuild layout/navigation, add syntax-highlighted code panes, in-browser editors, mermaid/diagram engines, or per-language kata categories. If time runs short, 5B's auto-drafted task board is the highest-value single change — it fixes complaint #2 and demos as the "wow" moment.
+
+---
+
 ## Phase 0 — Stabilize (July 16–17) · *fix what the review confirmed*
 
 These came out of a verified multi-agent code review of the current staged changes. All were confirmed against the code. Do these before anything else — two of them can destroy learner data, one breaks the judges' showcase page.

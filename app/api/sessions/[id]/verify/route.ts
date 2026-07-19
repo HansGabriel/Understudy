@@ -1,4 +1,4 @@
-import { failureCoaching } from "@/lib/ai";
+import { detailedFailureCoaching } from "@/lib/ai";
 import { apiError } from "@/lib/api";
 import { getChallenge } from "@/lib/challenges";
 import { runHiddenTest, runHiddenTestFiles, runScript } from "@/lib/test-runner";
@@ -28,7 +28,7 @@ export async function POST(_request: Request, context: RouteContext<"/api/sessio
       session.attempts.push({ at: new Date().toISOString(), normalSuite, behavioral });
       appendTimeline(session, "attempt", { normalPassed: normalSuite.passed, behavioralPassed: behavioral.passed });
       if (normalSuite.passed && !behavioral.passed) {
-        coaching = await failureCoaching(behavioral.output, challenge);
+        coaching = await detailedFailureCoaching(behavioral.output, challenge);
         session.lastCoaching = coaching;
         appendTimeline(session, "signal_failure", { assertion: behavioral.failures?.[0] ?? "Behavioral edge case failed" }, coaching.source);
       } else {

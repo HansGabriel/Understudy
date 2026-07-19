@@ -42,6 +42,7 @@ export function toPublicChallenge(challenge: Challenge): PublicChallenge {
     id: challenge.id,
     projectId: challenge.projectId,
     drafted: challenge.drafted,
+    draftedBy: challenge.draftedBy,
     behavioralCheck: challenge.behavioralCheck,
     mode: challenge.mode,
     title: challenge.title,

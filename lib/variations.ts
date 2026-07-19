@@ -92,11 +92,11 @@ export async function publishVariation(baseChallenge: Challenge, proposal: Varia
   return challenge;
 }
 
-export async function generateAndPublishVariation(baseChallenge: Challenge) {
+export async function generateAndPublishVariation(baseChallenge: Challenge, guidance?: string) {
   if (baseChallenge.projectId !== projectId) throw new Error("Forge variations are available for the built-in task-manager project only.");
   const fixture = await ensureFixture(baseChallenge.referenceCommit);
   const referenceSource = await git(["-C", fixture, "show", `${baseChallenge.referenceCommit}:${sourcePath}`], fixture);
-  const proposal = await draftVariation({ challenge: baseChallenge, referenceSource });
+  const proposal = await draftVariation({ challenge: baseChallenge, referenceSource, guidance });
   if (!proposal) throw new Error("Forge needs an OPENAI_API_KEY and a valid GPT-5.6 variation before it can publish anything.");
   return publishVariation(baseChallenge, proposal);
 }

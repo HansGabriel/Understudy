@@ -4,8 +4,8 @@
   "hiddenTestCommand": "test:challenge",
   "id": "persist-filter",
   "title": "Persist task-filter preferences",
-  "baseCommit": "e4c0b5b8e569ce9772e1709e460334da5b0f3222",
-  "referenceCommit": "a92083b85316f615e89774142c23be881abca618",
+  "baseCommit": "254497323c6871fc11394c29fe970fe70a3dd7b1",
+  "referenceCommit": "761bec416322d60233e889aa67cefd7abe9b30ed",
   "hiddenTestFile": "challenges/tests/persist-filter.challenge.test.ts",
   "difficulty": 2,
   "estimatedTime": "15–20 min",
@@ -15,7 +15,7 @@
     "state persistence"
   ],
   "brief": {
-    "desiredBehavior": "You're building the data layer of a task-manager app. Remember the active task filter when the task manager is created again. Read stored data defensively so an unexpected value falls back to all tasks.",
+    "desiredBehavior": "You're building the data layer of a task-manager app. Remember a valid active task filter when a new task manager is created, while safely falling back for absent or invalid stored values.",
     "acceptanceCriteria": [
       "Changing the filter writes the selected value to storage.",
       "A new task manager uses a valid stored filter.",
@@ -25,7 +25,9 @@
     "constraints": [
       "Work in the TypeScript task-manager library; this fixture has no browser screen.",
       "Use browser storage defensively and preserve existing behavior."
-    ]
+    ],
+    "story": "A person chooses a task filter, leaves, and returns expecting that preference to still make sense. Stored values are outside the app's control, so an unexpected value must not break the view.",
+    "example": "Before: every new task manager starts at all tasks. After: a valid saved filter returns, while an invalid value still shows all tasks."
   },
   "planQuestions": [
     "Which preference should still be active when the task manager is created again?",
@@ -35,15 +37,21 @@
   "hints": [
     {
       "level": 1,
-      "text": "Think about when a preference is read versus when it is written."
+      "text": "Think about when a preference is read versus when it is written.",
+      "concept": "A preference has a read moment and a write moment."
     },
     {
       "level": 2,
-      "text": "What values should storage be allowed to restore?"
+      "text": "What values should storage be allowed to restore?",
+      "concept": "Stored data needs a trusted set of values.",
+      "lookAt": "The boundary between stored text and the filter state."
     },
     {
       "level": 3,
-      "text": "Inspect the filter state initialization and selection method."
+      "text": "Inspect the filter state initialization and selection method.",
+      "concept": "Validation belongs where stored text becomes state.",
+      "lookAt": "The filter state initialization and selection method.",
+      "testIdea": "Create a new task manager with both valid and invalid stored values."
     }
   ],
   "explainBackQuestion": "Why should a stored preference be validated before it changes the UI?"

@@ -4,8 +4,8 @@
   "hiddenTestCommand": "test:challenge",
   "id": "optimistic-rollback",
   "title": "Optimistic completion with rollback",
-  "baseCommit": "d0e1600438706b7e03c5c8353aab93dfd3de1ec6",
-  "referenceCommit": "e4c0b5b8e569ce9772e1709e460334da5b0f3222",
+  "baseCommit": "eaa1ef4fdca2753610d5284ea1ff8dd539fb62a6",
+  "referenceCommit": "254497323c6871fc11394c29fe970fe70a3dd7b1",
   "hiddenTestFile": "challenges/tests/optimistic-rollback.challenge.test.ts",
   "difficulty": 3,
   "estimatedTime": "20–30 min",
@@ -15,7 +15,7 @@
     "async failure"
   ],
   "brief": {
-    "desiredBehavior": "You're building the data layer of a task-manager app. When someone completes a task, its state should update immediately. If saving fails, restore the earlier state and make the error available to the app.",
+    "desiredBehavior": "You're building the data layer of a task-manager app. Update task data immediately when a task is completed. If saving fails, restore the earlier task state and expose a clear error.",
     "acceptanceCriteria": [
       "Completing a task updates its data immediately, before saving finishes.",
       "A rejected save returns the task to its earlier state.",
@@ -24,7 +24,9 @@
     "constraints": [
       "Work in the TypeScript task-manager library; this fixture has no browser screen.",
       "Preserve existing behavior and use the project's patterns."
-    ]
+    ],
+    "story": "Someone marks a task complete and expects the list to respond immediately, even while the save is still in flight. If that save fails, the app must not pretend the task was safely completed.",
+    "example": "Before: a rejected save leaves the task looking complete. After: the original completion state returns and an error is available."
   },
   "planQuestions": [
     "What should someone observe first, and what should happen if saving fails?",
@@ -34,15 +36,21 @@
   "hints": [
     {
       "level": 1,
-      "text": "Consider what the task manager should expose if persistence fails."
+      "text": "Consider what the task manager should expose if persistence fails.",
+      "concept": "Consider what the task manager should expose if persistence fails."
     },
     {
       "level": 2,
-      "text": "What earlier task state would you need to preserve before applying the immediate change?"
+      "text": "What earlier task state would you need to preserve before applying the immediate change?",
+      "concept": "The immediate change needs a reliable earlier state.",
+      "lookAt": "The task data before it is replaced."
     },
     {
       "level": 3,
-      "text": "Look at the completion behavior in the task manager — something about the pre-change state matters there."
+      "text": "Look at the completion behavior in the task manager - something about the pre-change state matters there.",
+      "concept": "The earlier task state is evidence for recovery.",
+      "lookAt": "The completion behavior in the task manager.",
+      "testIdea": "Make a save reject and compare the task state before and after the failure."
     }
   ],
   "explainBackQuestion": "Why must the earlier task state be saved before an optimistic update?"

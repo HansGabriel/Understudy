@@ -1,4 +1,5 @@
 import { execFile as execFileCallback } from "node:child_process";
+import { createHash } from "node:crypto";
 import { promises as fs } from "node:fs";
 import os from "node:os";
 import path from "node:path";
@@ -6,8 +7,8 @@ import { promisify } from "node:util";
 import { draftChallengeFromCommit } from "@/lib/ai";
 import { getProject } from "@/lib/projects";
 import { installProjectDependencies, runScriptWithArgs } from "@/lib/test-runner";
-import { projectHiddenFilePath, readValidationCache, saveHiddenFile, saveLinkedChallenge, saveValidationCache } from "@/lib/project-cache";
-import { challengeSchema, projectCommitSchema, projectCommitValidationSchema, type Challenge, type ChallengeDraft, type ProjectCommit, type ProjectCommitValidation } from "@/lib/schemas";
+import { projectHiddenFilePath, readKataDraft, readValidationCache, saveHiddenFile, saveKataDraft, saveLinkedChallenge, saveValidationCache } from "@/lib/project-cache";
+import { challengeSchema, projectCommitSchema, projectCommitValidationSchema, projectKataTaskSchema, type Challenge, type ChallengeDraft, type ProjectCommit, type ProjectCommitValidation, type ProjectKataTask } from "@/lib/schemas";
 import { assertAbsoluteLocalPath } from "@/lib/paths";
 
 const execFile = promisify(execFileCallback);
@@ -146,21 +147,24 @@ async function commitContext(projectId: string, shaInput: string) {
 }
 
 function blankDraft(subject: string, sha: string): ChallengeDraft {
+  const change = subject.trim() || `commit ${sha.slice(0, 7)}`;
   return {
-    title: subject.trim() || `Replay commit ${sha.slice(0, 7)}`,
+    title: change,
     difficulty: 3,
     estimatedTime: "20–30 min",
     learningObjectives: ["Trace a real change", "Use tests as evidence"],
     brief: {
-      desiredBehavior: "Describe the observable behavior this change should add.",
-      acceptanceCriteria: ["Name the primary behavior to observe.", "Name an edge case or failure path.", "Name the existing behavior that must remain true."],
+      story: `This draft is based on the real change “${change}”. Turn that commit message into a precise learner-facing behavior before using it.`,
+      desiredBehavior: `Use the commit “${change}” to identify the observable behavior that should change, then state it in your own words.`,
+      acceptanceCriteria: [`Name the primary behavior implied by “${change}”.`, "Name an edge case or failure path.", "Name the existing behavior that must remain true."],
       constraints: ["Work in the linked repository's TypeScript data layer.", "Preserve existing behavior and use the project's patterns."],
+      example: `Before: “${change}” is only a commit message. After: its intended behavior is expressed clearly enough for the repository's tests to prove.`,
     },
     planQuestions: ["What should a user or caller observe after this change?", "Which existing behavior and tests will you inspect first?", "What edge case would prove the change is complete?"],
     hints: [
-      { level: 1, text: "Start with the observable behavior named in the brief." },
-      { level: 2, text: "Which existing state or contract must remain true while the new behavior is added?" },
-      { level: 3, text: "Inspect the smallest area of the repository connected to the commit's stated behavior." },
+      { level: 1, text: "Start with the observable behavior named in the brief.", concept: "Start with the observable behavior named in the brief." },
+      { level: 2, text: "Which existing state or contract must remain true while the new behavior is added?", concept: "Keep the observable behavior in view.", lookAt: "The state or contract that must remain true." },
+      { level: 3, text: "Inspect the smallest area of the repository connected to the commit's stated behavior.", concept: "Connect the change to the existing contract.", lookAt: "The smallest repository area tied to the stated behavior.", testIdea: "Use the added or full test suite to distinguish the old and new behavior." },
     ],
     explainBackQuestion: "What behavior did this change add, and how did the tests prove it?",
   };
@@ -179,12 +183,75 @@ export function challengeDraftView(challenge: Challenge): ChallengeDraft {
   };
 }
 
-export async function createLinkedChallenge(projectId: string, shaInput: string) {
+function guidanceKey(guidance?: string) {
+  return guidance ? createHash("sha1").update(guidance.trim().toLowerCase()).digest("hex").slice(0, 12) : "default";
+}
+
+function kataTags(subject: string, draft: ChallengeDraft) {
+  const words = `${subject} ${draft.learningObjectives.join(" ")}`.toLowerCase().match(/[a-z][a-z-]{2,}/g) ?? [];
+  return [...new Set(words.filter((word) => !new Set(["with", "from", "that", "this", "your", "behavior", "change", "replay"]).has(word)))].slice(0, 4).length
+    ? [...new Set(words.filter((word) => !new Set(["with", "from", "that", "this", "your", "behavior", "change", "replay"]).has(word)))].slice(0, 4)
+    : ["real history"];
+}
+
+async function kataTaskForCommit(projectId: string, repository: string, commit: ProjectCommit, guidance?: string, regenerate = false): Promise<ProjectKataTask> {
+  const key = guidanceKey(guidance);
+  if (!regenerate) {
+    const cached = await readKataDraft(projectId, commit.sha, key);
+    if (cached?.source === "ai") return cached;
+  }
+  const parent = await commitParent(repository, commit.sha);
+  const draft = await draftChallengeFromCommit({
+    subject: commit.subject,
+    body: await runGit(repository, ["show", "-s", "--format=%B", commit.sha]),
+    stat: parent ? await runGit(repository, ["diff", "--stat", parent, commit.sha, "--"]) : await runGit(repository, ["show", "--stat", "--format=", commit.sha]),
+    guidance,
+  });
+  const value = draft ?? blankDraft(commit.subject, commit.sha);
+  const task = projectKataTaskSchema.parse({ ...value, sha: commit.sha, subject: commit.subject, date: commit.date, tags: kataTags(commit.subject, value), source: draft ? "ai" : "authored" });
+  // A keyless or rejected response is intentionally retryable. Persisting it
+  // would leave a generic template on the board even after live drafting works.
+  return task.source === "ai" ? saveKataDraft(projectId, task, key) : task;
+}
+
+function kataRank(commit: ProjectCommit, guidance?: string) {
+  const interest = guidance?.toLowerCase().split(/\W+/).filter((word) => word.length > 2) ?? [];
+  const text = `${commit.subject} ${commit.filesChanged.join(" ")}`.toLowerCase();
+  const interestScore = interest.reduce((score, word) => score + (text.includes(word) ? 50 : 0), 0);
+  const featureScore = /^(?:feat|fix)\b/i.test(commit.subject) ? 20 : 0;
+  return (commit.addsTests ? 100 : 0) + interestScore + featureScore - commit.filesChanged.length;
+}
+
+export async function listKataTasks(projectId: string, guidance?: string) {
+  const project = await getProject(projectId);
+  if (project.mode !== "linked") throw new Error("Task drafting is available for linked projects only.");
+  const repository = assertAbsoluteLocalPath(project.path!);
+  const commits = await listProjectCommits(projectId);
+  const candidates = commits
+    .filter((commit) => !/^baseline\b/i.test(commit.subject))
+    .sort((left, right) => kataRank(right, guidance) - kataRank(left, guidance) || left.sha.localeCompare(right.sha))
+    .slice(0, 6);
+  return Promise.all(candidates.map((commit) => kataTaskForCommit(projectId, repository, commit, guidance)));
+}
+
+export async function regenerateKataTask(projectId: string, shaInput: string, guidance?: string) {
+  const project = await getProject(projectId);
+  if (project.mode !== "linked") throw new Error("Task drafting is available for linked projects only.");
+  const repository = assertAbsoluteLocalPath(project.path!);
+  const commit = (await listProjectCommits(projectId)).find((entry) => entry.sha.toLowerCase().startsWith(shaInput.toLowerCase()));
+  if (!commit) throw new Error("Choose a commit from the recent commit list.");
+  return kataTaskForCommit(projectId, repository, commit, guidance, true);
+}
+
+export async function createLinkedChallenge(projectId: string, shaInput: string, guidance?: string) {
   const context = await commitContext(projectId, shaInput);
-  const drafted = await draftChallengeFromCommit({
+  const cachedTask = await readKataDraft(projectId, context.commit.sha, guidanceKey(guidance));
+  const aiCachedTask = cachedTask?.source === "ai" ? cachedTask : null;
+  const drafted = aiCachedTask ? { title: aiCachedTask.title, difficulty: aiCachedTask.difficulty, estimatedTime: aiCachedTask.estimatedTime, learningObjectives: aiCachedTask.learningObjectives, brief: aiCachedTask.brief, planQuestions: aiCachedTask.planQuestions, hints: aiCachedTask.hints, explainBackQuestion: aiCachedTask.explainBackQuestion } : await draftChallengeFromCommit({
     subject: context.commit.subject,
     body: await runGit(context.repository, ["show", "-s", "--format=%B", context.commit.sha]),
     stat: await runGit(context.repository, ["diff", "--stat", context.parent, context.commit.sha, "--"]),
+    guidance,
   });
   const draft = drafted ?? blankDraft(context.commit.subject, context.commit.sha);
   const hiddenTestFiles = context.commit.replayable

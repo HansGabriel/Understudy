@@ -14,7 +14,7 @@ vi.mock("@/lib/projects", () => ({ getProject: vi.fn() }));
 vi.mock("@/lib/test-runner", () => ({ installProjectDependencies: vi.fn(async () => undefined), runScriptWithArgs }));
 
 import { getProject } from "@/lib/projects";
-import { createLinkedChallenge, listProjectCommits } from "@/lib/project-replays";
+import { createLinkedChallenge, listKataTasks, listProjectCommits } from "@/lib/project-replays";
 import { projectCacheDirectory } from "@/lib/paths";
 import { toPublicChallenge } from "@/lib/challenges";
 import { challengeSchema } from "@/lib/schemas";
@@ -82,5 +82,23 @@ describe("linked project commit replays", () => {
     const serialized = JSON.stringify(publicChallenge);
     expect(serialized).not.toContain(result.challenge.referenceCommit);
     expect(serialized).not.toContain("hiddenTestFiles");
+  });
+
+  it("turns linked history into cached, kata-style task cards without an API key", async () => {
+    const first = await listKataTasks(projectId, "edge cases");
+    expect(first).not.toHaveLength(0);
+    expect(first[0]).toMatchObject({ source: "authored" });
+    expect(first[0].brief.story).toBeTruthy();
+    expect(first[0].brief.example).toBeTruthy();
+    const second = await listKataTasks(projectId, "edge cases");
+    expect(second.map((task) => task.sha)).toEqual(first.map((task) => task.sha));
+    expect(await fs.readdir(path.join(projectCacheDirectory(projectId), "kata-drafts")).catch(() => [])).toEqual([]);
+  });
+
+  it("does not label an authored template as an AI-drafted challenge", async () => {
+    const result = await createLinkedChallenge(projectId, testCommit.slice(0, 12));
+    expect(result.source).toBe("blank");
+    expect(result.challenge.drafted).toBe(false);
+    expect(result.challenge.draftedBy).toBeUndefined();
   });
 });

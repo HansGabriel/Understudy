@@ -2,7 +2,7 @@ import { getChallenge } from "@/lib/challenges";
 import { apiError, parseJson } from "@/lib/api";
 import { planInputSchema } from "@/lib/schemas";
 import { appendTimeline, updateSession } from "@/lib/sessions";
-import { planFeedback } from "@/lib/ai";
+import { detailedPlanFeedback } from "@/lib/ai";
 
 export const runtime = "nodejs";
 
@@ -15,11 +15,12 @@ export async function POST(request: Request, context: RouteContext<"/api/session
       if (current.plan.confirmed) throw new Error("This plan is already confirmed.");
       if (current.status === "coding" && current.plan.revisionCount >= 1) throw new Error("The one optional plan revision has already been used.");
       const challenge = await getChallenge(current.challengeId);
-      const coaching = await planFeedback(answers, challenge);
+      const coaching = await detailedPlanFeedback(answers, challenge);
       current.plan = {
         answers,
         aiFeedback: coaching.text,
         aiSource: coaching.source,
+        feedback: coaching.feedback,
         revisionCount: current.status === "coding" ? 1 : current.plan.revisionCount,
         confirmed: false,
       };

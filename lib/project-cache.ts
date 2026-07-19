@@ -1,7 +1,7 @@
 import { randomUUID } from "node:crypto";
 import { promises as fs } from "node:fs";
 import path from "node:path";
-import { challengeSchema, type Challenge } from "@/lib/schemas";
+import { challengeSchema, projectKataTaskSchema, type Challenge, type ProjectKataTask } from "@/lib/schemas";
 import { assertInside, projectCacheDirectory } from "@/lib/paths";
 
 function cachePath(projectId: string, relativePath: string) {
@@ -24,6 +24,28 @@ export function projectVariationDirectory(projectId: string) {
 export function projectVariationBundlePath(projectId: string, variationId: string) {
   if (!/^[a-z0-9-]+$/.test(variationId)) throw new Error("Unsafe variation id.");
   return cachePath(projectId, path.join("variations", `${variationId}.bundle`));
+}
+
+function kataDraftPath(projectId: string, sha: string, guidanceKey = "default") {
+  if (!/^[a-z0-9-]+$/i.test(guidanceKey)) throw new Error("Unsafe kata draft key.");
+  return cachePath(projectId, path.join("kata-drafts", `${sha.toLowerCase()}-${guidanceKey}.json`));
+}
+
+export async function readKataDraft(projectId: string, sha: string, guidanceKey = "default"): Promise<ProjectKataTask | null> {
+  try {
+    return projectKataTaskSchema.parse(JSON.parse(await fs.readFile(kataDraftPath(projectId, sha, guidanceKey), "utf8")));
+  } catch {
+    return null;
+  }
+}
+
+export async function saveKataDraft(projectId: string, task: ProjectKataTask, guidanceKey = "default") {
+  const target = kataDraftPath(projectId, task.sha, guidanceKey);
+  await fs.mkdir(path.dirname(target), { recursive: true });
+  const temporary = `${target}.${randomUUID()}.tmp`;
+  await fs.writeFile(temporary, `${JSON.stringify(task, null, 2)}\n`, "utf8");
+  await fs.rename(temporary, target);
+  return task;
 }
 
 export async function listLinkedChallenges(projectId: string): Promise<Challenge[]> {

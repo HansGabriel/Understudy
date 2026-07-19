@@ -30,6 +30,11 @@ type RecentPayload = {
 const selectedProjectStorageKey = "understudy:selected-project";
 const defaultProject: ProjectSummary = { id: "task-manager", name: "task-manager", mode: "built-in", detected: { packageManager: "npm", testCommand: "test" }, consent: true };
 
+function conciseActionError(value: unknown, fallback: string) {
+  const message = value instanceof Error ? value.message : fallback;
+  return message.split(/\r?\n/).map((line) => line.trim()).filter(Boolean).slice(0, 2).join("\n") || fallback;
+}
+
 export default function LibraryPage() {
   const router = useRouter();
   const [challenges, setChallenges] = useState<PublicChallenge[]>([]);
@@ -108,7 +113,7 @@ export default function LibraryPage() {
       if (!response.ok) throw new Error(data.error ?? "Could not prepare a worktree.");
       router.push(`/session/${data.id}`);
     } catch (reason) {
-      setError(reason instanceof Error ? reason.message : "Could not prepare a worktree.");
+      setError(conciseActionError(reason, "Could not prepare a worktree."));
       setBusy("");
     }
   }
@@ -126,17 +131,17 @@ export default function LibraryPage() {
   return (
     <AppShell active="library">
       <header className="page-head library-head">
-        <div><p className="eyebrow">{selectedProject.id === "task-manager" ? "One practice project / two real changes" : `${selectedProject.name} / project library preview`}</p><h1>Learn from real history: Understudy drops you at the commit before a meaningful change and asks you to rebuild it yourself.</h1><p>A replay is a guided chance to rebuild a real change from this project&apos;s history. You make the change in your own editor; the project&apos;s tests show when the behavior is right.</p></div>
+        <div><p className="eyebrow">{selectedProject.id === "task-manager" ? "Two replays" : `${selectedProject.name} / tasks`}</p><h1>Learn from real history: Understudy drops you at the commit before a meaningful change and asks you to rebuild it yourself.</h1><p>Rebuild it in your own editor. Tests decide when it works.</p></div>
       </header>
       <section className="page-content">
-        {!hasSessions ? <section className="how-it-works" aria-labelledby="how-it-works-title">
-          <div className="how-it-works-head"><p className="eyebrow">How this works</p><h2 id="how-it-works-title">A short loop around a real, local code change.</h2></div>
+        {!hasSessions ? <details className="how-it-works" open>
+          <summary><span className="eyebrow">How it works</span><strong id="how-it-works-title">A short loop around a real change.</strong></summary>
           <ol>
-            <li><span>1</span><p><strong>Pick a focused replay.</strong> Start from a real change in this project&apos;s history.</p></li>
-            <li><span>2</span><p><strong>Open your working copy.</strong> Make the change in your own editor.</p></li>
-            <li><span>3</span><p><strong>Prove the behavior.</strong> Run the tests, use coaching if useful, and explain your reasoning.</p></li>
+            <li><span>1</span><p><strong>Pick a replay.</strong> Start from real history.</p></li>
+            <li><span>2</span><p><strong>Open your copy.</strong> Work in your own editor.</p></li>
+            <li><span>3</span><p><strong>Prove it.</strong> Let the tests decide.</p></li>
           </ol>
-        </section> : null}
+        </details> : null}
         {isLinkedProject ? <>
           <CommitPicker projectId={selectedProject.id} onChallengeCreated={handleDraftedChallenge} />
           {entries.length ? entries.map(renderEntry) : <article className="card setup-card project-empty-state"><p className="eyebrow">Project library</p><h2>No drafted challenges yet.</h2><p>Create a replay from a self-validating commit above. The saved draft will appear here for practice.</p></article>}

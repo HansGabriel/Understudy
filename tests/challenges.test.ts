@@ -82,6 +82,7 @@ function sessionRecord(id: string, status: SessionRecord["status"]): SessionReco
     hints: [],
     explainBack: { question: "Why?", answer: status === "completed" ? "Because state can be restored." : "", aiFeedback: "" },
     reflection: "",
+    reflectionBullets: [],
     timeline: [],
     coachThread: [],
   };

@@ -229,6 +229,22 @@ async function main() {
     hints: [{ level: 1, text: "Think about when a preference is read versus when it is written." }, { level: 2, text: "What values should storage be allowed to restore?" }, { level: 3, text: "Inspect the filter state initialization and selection method." }],
     explainBackQuestion: "Why should a stored preference be validated before it changes the UI?",
   };
+  optimistic.brief.story = "Someone marks a task complete and expects the list to respond immediately, even while the save is still in flight. If that save fails, the app must not pretend the task was safely completed.";
+  optimistic.brief.desiredBehavior = "You're building the data layer of a task-manager app. Update task data immediately when a task is completed. If saving fails, restore the earlier task state and expose a clear error.";
+  optimistic.brief.example = "Before: a rejected save leaves the task looking complete. After: the original completion state returns and an error is available.";
+  optimistic.hints = [
+    { level: 1, text: "Consider what the task manager should expose if persistence fails.", concept: "Consider what the task manager should expose if persistence fails." },
+    { level: 2, text: "What earlier task state would you need to preserve before applying the immediate change?", concept: "The immediate change needs a reliable earlier state.", lookAt: "The task data before it is replaced." },
+    { level: 3, text: "Look at the completion behavior in the task manager - something about the pre-change state matters there.", concept: "The earlier task state is evidence for recovery.", lookAt: "The completion behavior in the task manager.", testIdea: "Make a save reject and compare the task state before and after the failure." },
+  ];
+  persisted.brief.story = "A person chooses a task filter, leaves, and returns expecting that preference to still make sense. Stored values are outside the app's control, so an unexpected value must not break the view.";
+  persisted.brief.desiredBehavior = "You're building the data layer of a task-manager app. Remember a valid active task filter when a new task manager is created, while safely falling back for absent or invalid stored values.";
+  persisted.brief.example = "Before: every new task manager starts at all tasks. After: a valid saved filter returns, while an invalid value still shows all tasks.";
+  persisted.hints = [
+    { level: 1, text: "Think about when a preference is read versus when it is written.", concept: "A preference has a read moment and a write moment." },
+    { level: 2, text: "What values should storage be allowed to restore?", concept: "Stored data needs a trusted set of values.", lookAt: "The boundary between stored text and the filter state." },
+    { level: 3, text: "Inspect the filter state initialization and selection method.", concept: "Validation belongs where stored text becomes state.", lookAt: "The filter state initialization and selection method.", testIdea: "Create a new task manager with both valid and invalid stored values." },
+  ];
   await fs.writeFile(path.join(challengeDirectory, "optimistic-rollback.json"), `${JSON.stringify(optimistic, null, 2)}\n`);
   await fs.writeFile(path.join(challengeDirectory, "persist-filter.json"), `${JSON.stringify(persisted, null, 2)}\n`);
   console.log(`Fixture ready: ${baseCommit.slice(0, 7)} → ${optimisticCommit.slice(0, 7)} → ${persistCommit.slice(0, 7)}`);

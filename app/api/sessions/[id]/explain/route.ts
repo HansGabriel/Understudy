@@ -1,4 +1,4 @@
-import { reflection } from "@/lib/ai";
+import { structuredReflection } from "@/lib/ai";
 import { apiError, parseJson } from "@/lib/api";
 import { explainInputSchema } from "@/lib/schemas";
 import { appendTimeline, updateSession } from "@/lib/sessions";
@@ -12,9 +12,10 @@ export async function POST(request: Request, context: RouteContext<"/api/session
     const session = await updateSession(id, async (current) => {
       if (current.status !== "passed") throw new Error("Pass all checks before completing the explanation.");
       current.explainBack.answer = answer;
-      const coaching = await reflection(current);
+      const coaching = await structuredReflection(current);
       current.reflection = coaching.text;
       current.reflectionSource = coaching.source;
+      current.reflectionBullets = coaching.bullets;
       current.explainBack.aiFeedback = coaching.text;
       current.explainBack.aiSource = coaching.source;
       current.status = "completed";

@@ -1,9 +1,16 @@
 import { describe, expect, it } from "vitest";
-import { planFeedback } from "@/lib/ai";
+import { zodTextFormat } from "openai/helpers/zod";
+import { aiStructuredOutputSchemas, planFeedback } from "@/lib/ai";
 import { listChallenges } from "@/lib/challenges";
 import { coachingResultSchema } from "@/lib/schemas";
 
 describe("coaching source labels", () => {
+  it("keeps every Responses structured-output schema strict-mode compatible", () => {
+    for (const { name, schema } of aiStructuredOutputSchemas) {
+      expect(() => zodTextFormat(schema, name)).not.toThrow();
+    }
+  });
+
   it("marks the authored fallback when no API key is available", async () => {
     const originalKey = process.env.OPENAI_API_KEY;
     delete process.env.OPENAI_API_KEY;

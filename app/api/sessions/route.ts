@@ -20,6 +20,7 @@ function newSession(challengeId: string, projectId: string, worktreePath: string
     hints: [],
     explainBack: { question: explainBackQuestion, answer: "", aiFeedback: "", aiSource: "authored" },
     reflection: "",
+    reflectionBullets: [],
     reflectionSource: "authored",
     lastCoaching: null,
     coachThread: [],

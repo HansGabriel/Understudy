@@ -1,5 +1,6 @@
 import Link from "next/link";
 import type { PublicChallenge } from "@/lib/schemas";
+import { tagTone } from "@/lib/tag-tone";
 
 export type ChallengeProgress = {
   id: string;
@@ -10,16 +11,16 @@ export function ChallengeCard({ challenge, busy, onReplay, progress }: { challen
   const filled = "●".repeat(challenge.difficulty);
   const empty = "●".repeat(5 - challenge.difficulty);
   return (
-    <article className="card challenge-card">
+    <article className={`card challenge-card ${progress ? `state-${progress.status}` : ""}`}>
       <div>
-        <span className="replay-tag">REPLAY</span>{challenge.drafted ? <span className="chip draft-chip">{challenge.draftedBy === "ai" ? "AI-drafted" : "Drafted"}</span> : null}
-        <span className="chip" style={{ marginLeft: 8 }}>{challenge.tag}</span>
+        <span className="replay-tag">REPLAY</span>{challenge.drafted ? <span className="chip draft-chip">{challenge.draftedBy === "ai" ? "AI-drafted" : "Drafted"}</span> : null}{progress ? <span className={`status-chip status-${progress.status}`}>{progress.status === "completed" ? "completed" : progress.status === "passed" ? "ready to explain" : "in progress"}</span> : null}
+        <span className={`chip tag-chip tone-${tagTone(challenge.tag)}`}>{challenge.tag}</span>
         <h2>{challenge.title}</h2>
         <p className="challenge-summary">{challenge.brief.desiredBehavior}</p>
-        <div className="chip-row">{challenge.learningObjectives.map((objective) => <span className="chip" key={objective}>{objective}</span>)}</div>
+        <div className="chip-row">{challenge.learningObjectives.map((objective) => <span className={`chip tag-chip tone-${tagTone(objective)}`} key={objective}>{objective}</span>)}</div>
       </div>
       <div className="challenge-meta">
-        <div><div className="meta-label">Difficulty</div><div className="difficulty" aria-label={`${challenge.difficulty} out of 5 difficulty`}>{filled}<span>{empty}</span></div></div>
+        <div><div className="meta-label">Difficulty</div><div className={`difficulty-chip difficulty-${challenge.difficulty}`} aria-label={`${challenge.difficulty} out of 5 difficulty`}>{filled}<span>{empty}</span></div></div>
         <div><div className="meta-label">Est. time</div><strong style={{ fontFamily: "var(--font-mono)", fontSize: 13 }}>{challenge.estimatedTime}</strong></div>
         {progress?.status === "completed"
           ? <Link className="button" href={`/report/${progress.id}`}>Completed ✓ · View report</Link>

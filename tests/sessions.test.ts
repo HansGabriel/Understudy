@@ -8,6 +8,7 @@ import { GET as getRecentSessions } from "@/app/api/sessions/recent/route";
 import { GET as getSampleSession } from "@/app/api/sample-session/route";
 import { POST as submitPlan } from "@/app/api/sessions/[id]/plan/route";
 import { POST as confirmPlan } from "@/app/api/sessions/[id]/plan/confirm/route";
+import { POST as requestOutline } from "@/app/api/sessions/[id]/outline/route";
 import { discardSession } from "@/lib/session-cleanup";
 
 function testSession(id: string): SessionRecord {
@@ -23,6 +24,7 @@ function testSession(id: string): SessionRecord {
     hints: [],
     explainBack: { question: "Why?", answer: "", aiFeedback: "" },
     reflection: "",
+    reflectionBullets: [],
     timeline: [],
     coachThread: [],
   };
@@ -141,6 +143,46 @@ describe("session persistence", () => {
     } finally {
       if (originalKey === undefined) delete process.env.OPENAI_API_KEY;
       else process.env.OPENAI_API_KEY = originalKey;
+      await fs.rm(sessionDirectory(id), { recursive: true, force: true });
+    }
+  });
+
+  it("only creates and logs an approach outline after plan confirmation", async () => {
+    const id = randomUUID();
+    const context = { params: Promise.resolve({ id }) } as never;
+    const originalKey = process.env.OPENAI_API_KEY;
+    delete process.env.OPENAI_API_KEY;
+    try {
+      await saveSession(testSession(id));
+      const blocked = await requestOutline(new Request(`http://localhost/api/sessions/${id}/outline`, { method: "POST" }), context);
+      expect(blocked.status).toBe(400);
+      await submitPlan(new Request(`http://localhost/api/sessions/${id}/plan`, { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ answers: ["Observe completion immediately", "Inspect the save behavior", "A rejected save restores the old task"] }) }), context);
+      await confirmPlan(new Request(`http://localhost/api/sessions/${id}/plan/confirm`, { method: "POST" }), context);
+      const created = await requestOutline(new Request(`http://localhost/api/sessions/${id}/outline`, { method: "POST" }), context);
+      expect(created.status).toBe(200);
+      const saved = await loadSession(id);
+      expect(saved.outline?.steps).toHaveLength(4);
+      expect(saved.timeline.at(-1)?.type).toBe("outline");
+    } finally {
+      if (originalKey === undefined) delete process.env.OPENAI_API_KEY;
+      else process.env.OPENAI_API_KEY = originalKey;
+      await fs.rm(sessionDirectory(id), { recursive: true, force: true });
+    }
+  });
+
+  it("rejects invalid or after-the-fact outline requests", async () => {
+    const invalidContext = { params: Promise.resolve({ id: "../not-a-session" }) } as never;
+    const invalid = await requestOutline(new Request("http://localhost/api/sessions/invalid/outline", { method: "POST" }), invalidContext);
+    expect(invalid.status).toBe(400);
+
+    const id = randomUUID();
+    const context = { params: Promise.resolve({ id }) } as never;
+    try {
+      await saveSession({ ...testSession(id), status: "passed", plan: { answers: ["one", "two", "three"], aiFeedback: "", revisionCount: 0, confirmed: true } });
+      const response = await requestOutline(new Request(`http://localhost/api/sessions/${id}/outline`, { method: "POST" }), context);
+      expect(response.status).toBe(400);
+      expect((await loadSession(id)).outline).toBeUndefined();
+    } finally {
       await fs.rm(sessionDirectory(id), { recursive: true, force: true });
     }
   });

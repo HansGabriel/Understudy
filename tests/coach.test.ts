@@ -20,6 +20,7 @@ function sessionRecord(id: string, coachThread: SessionRecord["coachThread"] = [
     hints: [],
     explainBack: { question: "Why?", answer: "", aiFeedback: "" },
     reflection: "",
+    reflectionBullets: [],
     lastCoaching: null,
     coachThread,
     timeline: [],
