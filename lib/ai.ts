@@ -38,6 +38,18 @@ const aiVariationProposalSchema = aiChallengeDraftSchema.extend({
 const failureResponseSchema = z.object({ expectedVsObserved: z.string().trim().min(1).max(850), investigationQuestion: z.string().trim().min(1).max(500) });
 const reflectionResponseSchema = z.object({ observations: z.array(z.string().trim().min(1).max(500)).length(3) });
 
+function liveCoachingClient(apiKey: string) {
+  return new OpenAI({ apiKey, timeout: 45_000, maxRetries: 1 });
+}
+
+function warnLiveCoachingFailure(error: unknown) {
+  console.warn("Understudy: live coaching call failed, using authored fallback:", error);
+}
+
+function warnRejectedLiveOutput(name: string, reason: string) {
+  console.warn("Understudy: live coaching output was rejected, using authored fallback:", `${name}: ${reason}`);
+}
+
 export const aiStructuredOutputSchemas = [
   { name: "coach_response", schema: coachResponseSchema },
   { name: "plan_feedback", schema: planFeedbackDetailSchema },
@@ -186,7 +198,7 @@ async function coach(prompt: string, fallback: string, accept: (feedback: string
   const apiKey = process.env.OPENAI_API_KEY;
   if (!apiKey) return { text: fallback, source: "authored" };
   try {
-    const client = new OpenAI({ apiKey, timeout: 8_000, maxRetries: 0 });
+    const client = liveCoachingClient(apiKey);
     const response = await client.responses.parse({
       model: "gpt-5.6",
       reasoning: { effort: "low" },
@@ -197,10 +209,15 @@ async function coach(prompt: string, fallback: string, accept: (feedback: string
       text: { format: zodTextFormat(coachResponseSchema, "coach_response") },
     });
     const feedback = response.output_parsed?.feedback?.trim();
-    if (!feedback) return { text: fallback, source: "authored" };
+    if (!feedback) {
+      warnRejectedLiveOutput("coach_response", "the structured response did not include feedback");
+      return { text: fallback, source: "authored" };
+    }
     if (accept(feedback)) return { text: feedback, source: "ai" };
+    warnRejectedLiveOutput("coach_response", "accept() returned false");
     return { text: rejectedFallback, source: "authored", rejected: true };
-  } catch {
+  } catch (error) {
+    warnLiveCoachingFailure(error);
     return { text: fallback, source: "authored" };
   }
 }
@@ -209,7 +226,7 @@ async function structuredCoach<T>(prompt: string, schema: z.ZodType<T>, fallback
   const apiKey = process.env.OPENAI_API_KEY;
   if (!apiKey) return { value: fallback, source: "authored" };
   try {
-    const client = new OpenAI({ apiKey, timeout: 8_000, maxRetries: 0 });
+    const client = liveCoachingClient(apiKey);
     const response = await client.responses.parse({
       model: "gpt-5.6",
       reasoning: { effort: "low" },
@@ -221,8 +238,9 @@ async function structuredCoach<T>(prompt: string, schema: z.ZodType<T>, fallback
     });
     const parsed = response.output_parsed;
     if (parsed && accept(parsed)) return { value: parsed, source: "ai" };
-  } catch {
-    // The authored response is intentionally usable when the live call fails.
+    warnRejectedLiveOutput(name, parsed ? "accept() returned false" : "the structured response was empty");
+  } catch (error) {
+    warnLiveCoachingFailure(error);
   }
   return { value: fallback, source: "authored" };
 }
@@ -429,7 +447,7 @@ export async function draftChallengeFromCommit(context: CommitDraftContext): Pro
     "Return exactly three plan questions and exactly three structured hints with levels 1, 2, and 3. Hints use concept, then lookAt, then testIdea progressively. Do not include code, file names, line numbers, or a solution sequence.",
   ].join("\n\n");
   try {
-    const client = new OpenAI({ apiKey, timeout: 8_000, maxRetries: 0 });
+    const client = liveCoachingClient(apiKey);
     const response = await client.responses.parse({
       model: "gpt-5.6",
       reasoning: { effort: "low" },
@@ -440,11 +458,18 @@ export async function draftChallengeFromCommit(context: CommitDraftContext): Pro
       text: { format: zodTextFormat(aiChallengeDraftSchema, "challenge_draft") },
     });
     const parsed = response.output_parsed;
-    if (!parsed) return null;
+    if (!parsed) {
+      warnRejectedLiveOutput("challenge_draft", "the structured response was empty");
+      return null;
+    }
     const draft = normalizeChallengeDraft(parsed);
-    if (/```|=>|\b(?:const|let|var|function|class|import|export|return|await)\b|(?:^|\s)[\w./-]+:\d+(?:\s|$)/i.test(JSON.stringify(draft))) return null;
+    if (/```|=>|\b(?:const|let|var|function|class|import|export|return|await)\b|(?:^|\s)[\w./-]+:\d+(?:\s|$)/i.test(JSON.stringify(draft))) {
+      warnRejectedLiveOutput("challenge_draft", "the draft did not pass the existing safety check");
+      return null;
+    }
     return draft;
-  } catch {
+  } catch (error) {
+    warnLiveCoachingFailure(error);
     return null;
   }
 }
@@ -464,7 +489,7 @@ export async function draftVariation(context: VariationContext): Promise<Variati
     `Base/reference source (server-side context only):\n${context.referenceSource.slice(0, 80_000)}`,
   ].join("\n\n");
   try {
-    const client = new OpenAI({ apiKey, timeout: 8_000, maxRetries: 0 });
+    const client = liveCoachingClient(apiKey);
     const response = await client.responses.parse({
       model: "gpt-5.6",
       reasoning: { effort: "low" },
@@ -475,11 +500,18 @@ export async function draftVariation(context: VariationContext): Promise<Variati
       text: { format: zodTextFormat(aiVariationProposalSchema, "variation_proposal") },
     });
     const proposal = response.output_parsed;
-    if (!proposal) return null;
+    if (!proposal) {
+      warnRejectedLiveOutput("variation_proposal", "the structured response was empty");
+      return null;
+    }
     const parsed = normalizeVariationProposal(proposal);
-    if (/process\.|child_process|fs\.|exec\(|spawn\(|```/i.test(`${parsed.referenceSource}\n${parsed.behavioralTest}`)) return null;
+    if (/process\.|child_process|fs\.|exec\(|spawn\(|```/i.test(`${parsed.referenceSource}\n${parsed.behavioralTest}`)) {
+      warnRejectedLiveOutput("variation_proposal", "the proposal did not pass the existing safety check");
+      return null;
+    }
     return parsed;
-  } catch {
+  } catch (error) {
+    warnLiveCoachingFailure(error);
     return null;
   }
 }

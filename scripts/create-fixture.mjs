@@ -3,6 +3,7 @@ import { promises as fs } from "node:fs";
 import os from "node:os";
 import path from "node:path";
 import { npmInvocation } from "./npm-runner.mjs";
+import { buildKataLabFixture } from "./create-kata-lab.mjs";
 
 const root = process.cwd();
 const source = path.join(os.tmpdir(), `understudy-fixture-${Date.now()}`);
@@ -247,6 +248,7 @@ async function main() {
   ];
   await fs.writeFile(path.join(challengeDirectory, "optimistic-rollback.json"), `${JSON.stringify(optimistic, null, 2)}\n`);
   await fs.writeFile(path.join(challengeDirectory, "persist-filter.json"), `${JSON.stringify(persisted, null, 2)}\n`);
+  await buildKataLabFixture(root);
   console.log(`Fixture ready: ${baseCommit.slice(0, 7)} → ${optimisticCommit.slice(0, 7)} → ${persistCommit.slice(0, 7)}`);
 }
 

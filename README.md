@@ -2,7 +2,7 @@
 
 **Learn from real history: Understudy drops you at the commit before a meaningful change and asks you to rebuild it yourself.**
 
-Understudy is a local, desktop-first learning lab for developers. It gives you a copy of the bundled task-manager practice project from just before a real change landed, then asks you to rebuild the behavior in your own editor. That copy is an isolated Git worktree; Understudy calls it **your working copy**. You can also link a local npm + Vitest/Jest repository, choose one of its recent commits, and draft a replay from that history.
+Understudy is a local, desktop-first learning lab for developers. It includes **Kata Lab**, a bundled TypeScript project with four small algorithm replays, alongside the task-manager practice project. Each replay gives you a copy from just before a real change landed, then asks you to rebuild the behavior in your own editor. That copy is an isolated Git worktree; Understudy calls it **your working copy**. You can also link a local npm + Vitest/Jest repository, choose one of its recent commits, and draft a replay from that history.
 
 ## Run locally
 
@@ -16,7 +16,7 @@ npm run dev
 
 Open `http://localhost:3000`. On PowerShell systems that block `npm.ps1`, use the equivalent `npm.cmd` command. The app installs the bundled fixture's pinned dependencies when it creates a worktree.
 
-`npm run fixture:build` normally takes about 20–60 seconds on a first run because it installs the small fixture toolchain. Success prints a `Fixture ready: <base> → <optimistic> → <persist>` line and writes `fixtures/task-manager.bundle` plus the authored challenge manifests. The bundle is tracked in this repository, so most clones only need this command when rebuilding it.
+`npm run fixture:build` normally takes about 20-60 seconds on a first run because it installs the small fixture toolchains. Success prints both a `Kata Lab ready` line and a `Fixture ready` line, then writes `fixtures/kata-lab.bundle`, `fixtures/task-manager.bundle`, and the authored challenge manifests. The bundles are tracked in this repository, so most clones only need this command when rebuilding them.
 
 Optional AI coaching uses a local `.env.local` file:
 
@@ -28,7 +28,7 @@ Copy `.env.example` rather than committing an environment file. Without a key, e
 
 ## What the replay does
 
-1. Pick a real task-manager change from the practice library. A **replay** is a guided rebuild of a change from that project's history.
+1. Pick a real change from the practice library. Kata Lab starts with four easy-to-medium algorithm replays: vowel count, unpaired number, balanced brackets, and two-sum indices. A **replay** is a guided rebuild of a change from that project's history.
 2. Answer three planning questions before editing.
 3. Open your working copy (an isolated Git worktree) in your own editor.
 4. Run the project's own tests and an edge-case check. Green project tests plus an amber edge-case failure is the intended signal, not a setup error.
@@ -45,7 +45,7 @@ npm run lint
 npm run build
 ```
 
-`validate:challenges` proves that each challenge fails at its base commit and passes at its authored reference commit; it also checks an alternate correct rollback implementation for the hero challenge.
+`validate:challenges` proves that each challenge fails at its base commit and passes at its authored reference commit; it also checks alternate correct implementations for the bundled challenges.
 
 ### Troubleshooting
 
@@ -71,4 +71,4 @@ Codex accelerated the app's implementation, fixture history authoring, test hard
 
 ## Deliberate boundaries
 
-Understudy ships with one bundled TypeScript fixture repository and two curated Replay challenges. It also supports linking a local npm + Vitest/Jest repository and choosing recent commits as an early project-library path; linked challenges are user-owned and run tests on the user's machine. It does not offer accounts, cloud sync, in-browser coding, XP, rankings, or anti-cheat.
+Understudy ships with two bundled TypeScript fixture repositories: Kata Lab has four curated algorithm replays, while task-manager has two data-layer replays. It also supports linking a local npm + Vitest/Jest repository and choosing recent commits as an early project-library path; linked challenges are user-owned and run tests on the user's machine. It does not offer accounts, cloud sync, in-browser coding, XP, rankings, or anti-cheat.

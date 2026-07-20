@@ -2,11 +2,15 @@ import { promises as fs } from "node:fs";
 import path from "node:path";
 import { challengeSchema, publicChallengeSchema, type Challenge, type PublicChallenge } from "@/lib/schemas";
 import { challengesRoot } from "@/lib/paths";
-import { assertFixtureAvailable } from "@/lib/fixture";
+import { assertAllFixturesAvailable } from "@/lib/fixture";
 import { listProjects } from "@/lib/projects";
 import { listLinkedChallenges } from "@/lib/project-cache";
 
 const tags: Record<string, string> = {
+  "count-vowels": "strings / basics",
+  "find-unique-number": "arrays / counting",
+  "balanced-brackets": "stacks / parsing",
+  "two-sum-indices": "arrays / lookup",
   "optimistic-rollback": "async · error handling",
   "persist-filter": "persistence · validation",
 };
@@ -26,9 +30,14 @@ export async function listChallenges(): Promise<Challenge[]> {
         }
       }),
   )).filter((challenge): challenge is Challenge => challenge !== null);
-  const projectIds = ["task-manager", ...(await listProjects()).filter((project) => project.mode === "linked").map((project) => project.id)];
+  const projectIds = (await listProjects()).map((project) => project.id);
   const generated = await Promise.all([...new Set(projectIds)].map((projectId) => listLinkedChallenges(projectId)));
-  return [...manifests, ...generated.flat()].sort((a, b) => a.id.localeCompare(b.id));
+  const projectOrder: Record<string, number> = { "kata-lab": 0, "task-manager": 1 };
+  return [...manifests, ...generated.flat()].sort((a, b) => (
+    (projectOrder[a.projectId] ?? 99) - (projectOrder[b.projectId] ?? 99)
+    || a.libraryOrder - b.libraryOrder
+    || a.title.localeCompare(b.title)
+  ));
 }
 
 export async function getChallenge(id: string): Promise<Challenge> {
@@ -41,6 +50,7 @@ export function toPublicChallenge(challenge: Challenge): PublicChallenge {
   return publicChallengeSchema.parse({
     id: challenge.id,
     projectId: challenge.projectId,
+    libraryOrder: challenge.libraryOrder,
     drafted: challenge.drafted,
     draftedBy: challenge.draftedBy,
     behavioralCheck: challenge.behavioralCheck,
@@ -55,7 +65,7 @@ export function toPublicChallenge(challenge: Challenge): PublicChallenge {
 }
 
 export async function listPublicChallenges() {
-  assertFixtureAvailable();
+  assertAllFixturesAvailable();
   return (await listChallenges()).map(toPublicChallenge);
 }
 
@@ -63,6 +73,6 @@ export async function recommendNextChallenge(completedChallengeIds: Iterable<str
   const completed = new Set(completedChallengeIds);
   const next = (await listChallenges())
     .filter((challenge) => challenge.projectId === projectId && !completed.has(challenge.id) && (challenge.projectId === "task-manager" ? !challenge.drafted : challenge.drafted))
-    .sort((left, right) => left.difficulty - right.difficulty || left.id.localeCompare(right.id))[0];
+    .sort((left, right) => left.libraryOrder - right.libraryOrder || left.difficulty - right.difficulty || left.id.localeCompare(right.id))[0];
   return next ? toPublicChallenge(next) : null;
 }

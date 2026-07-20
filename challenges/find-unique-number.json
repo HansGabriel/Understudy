@@ -1,0 +1,59 @@
+{
+  "mode": "replay",
+  "projectId": "kata-lab",
+  "libraryOrder": 2,
+  "testCommand": "test",
+  "hiddenTestCommand": "test:challenge",
+  "hiddenTestFile": "challenges/tests/kata-lab/find-unique-number.challenge.test.ts",
+  "baseCommit": "5f5676b5c448727d4d25463e19bf73c318795510",
+  "referenceCommit": "5e8551c186f7bb7f871b8f3864586158f107ce9d",
+  "id": "find-unique-number",
+  "title": "Find the unpaired number",
+  "difficulty": 2,
+  "estimatedTime": "10-15 min",
+  "learningObjectives": [
+    "arrays",
+    "frequency counting",
+    "edge cases"
+  ],
+  "planQuestions": [
+    "What property identifies the unpaired value?",
+    "How will zero be treated by your check?",
+    "Which input proves a negative value is not skipped?"
+  ],
+  "hints": [
+    {
+      "level": 1,
+      "text": "Treat every numeric value as data, including zero.",
+      "concept": "A value being zero does not make it absent."
+    },
+    {
+      "level": 2,
+      "text": "What information would let you ask how many times each value occurred?",
+      "concept": "Occurrence counts separate paired and unpaired values.",
+      "lookAt": "The selection rule for the returned value."
+    },
+    {
+      "level": 3,
+      "text": "Inspect the condition that chooses the first unique number.",
+      "concept": "The current selection rule has an implicit truthiness assumption.",
+      "lookAt": "The function that finds the unpaired number.",
+      "testIdea": "Use zero as the only value that appears once."
+    }
+  ],
+  "explainBackQuestion": "Why is a truthiness check unsafe when zero is a valid number?",
+  "brief": {
+    "story": "A batch of readings contains matching duplicate values and one value that appeared only once. Zero and negative readings are still real readings, not missing data.",
+    "desiredBehavior": "Return the one number that occurs once, including when that number is zero or negative.",
+    "acceptanceCriteria": [
+      "The one unpaired number is returned.",
+      "Zero can be the answer.",
+      "Negative values are handled without special treatment."
+    ],
+    "constraints": [
+      "Work in the TypeScript Kata Lab library.",
+      "Return null only when no unique number exists."
+    ],
+    "example": "[0, -1, -1, 2, 2] returns 0."
+  }
+}

@@ -1,0 +1,59 @@
+{
+  "mode": "replay",
+  "projectId": "kata-lab",
+  "libraryOrder": 1,
+  "testCommand": "test",
+  "hiddenTestCommand": "test:challenge",
+  "hiddenTestFile": "challenges/tests/kata-lab/count-vowels.challenge.test.ts",
+  "baseCommit": "bdff1b9074a67bc6128e18053d30cf98d4d8e800",
+  "referenceCommit": "5f5676b5c448727d4d25463e19bf73c318795510",
+  "id": "count-vowels",
+  "title": "Count vowels in a phrase",
+  "difficulty": 1,
+  "estimatedTime": "8-12 min",
+  "learningObjectives": [
+    "string iteration",
+    "case normalization",
+    "edge cases"
+  ],
+  "planQuestions": [
+    "What makes two letters equivalent for this count?",
+    "Which existing example would you inspect before editing?",
+    "What input would prove capitalization is handled?"
+  ],
+  "hints": [
+    {
+      "level": 1,
+      "text": "Think about comparing letters in one consistent form.",
+      "concept": "Letters can be normalized before they are compared."
+    },
+    {
+      "level": 2,
+      "text": "What changes if a vowel arrives as an uppercase character?",
+      "concept": "The vowel set stays small; the input character can be made comparable.",
+      "lookAt": "The per-character comparison."
+    },
+    {
+      "level": 3,
+      "text": "Inspect the character filter used by the vowel counter.",
+      "concept": "The count is already a filter over characters.",
+      "lookAt": "The condition that decides whether a character is a vowel.",
+      "testIdea": "Try the same vowels in a mix of uppercase and lowercase."
+    }
+  ],
+  "explainBackQuestion": "Why should letter case be normalized before checking whether it is a vowel?",
+  "brief": {
+    "story": "A reading helper highlights how much vowel sound a phrase contains. It works for typed notes as well as copied text, so capitalization should not change the answer.",
+    "desiredBehavior": "Count the letters a, e, i, o, and u in a phrase, whether they are uppercase or lowercase.",
+    "acceptanceCriteria": [
+      "Lowercase vowels are counted.",
+      "Uppercase vowels are counted too.",
+      "Other letters and punctuation do not change the count."
+    ],
+    "constraints": [
+      "Work in the TypeScript Kata Lab library.",
+      "Keep the function return value as a number."
+    ],
+    "example": "\"AeIoU\" returns 5."
+  }
+}

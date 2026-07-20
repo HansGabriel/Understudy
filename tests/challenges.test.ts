@@ -45,6 +45,24 @@ describe("challenge projection", () => {
     expect(publicPayload).not.toContain(internal.planQuestions[0]);
   });
 
+  it("lists the four Kata Lab replays first in their intended easy-to-medium order", async () => {
+    const publicChallenges = await listPublicChallenges();
+    const kataChallenges = publicChallenges.filter((challenge) => challenge.projectId === "kata-lab");
+
+    expect(kataChallenges.map((challenge) => challenge.id)).toEqual([
+      "count-vowels",
+      "find-unique-number",
+      "balanced-brackets",
+      "two-sum-indices",
+    ]);
+    expect(kataChallenges.map((challenge) => challenge.difficulty)).toEqual([1, 2, 3, 3]);
+    const payload = JSON.stringify(kataChallenges);
+    const internal = (await listChallenges()).find((challenge) => challenge.id === "two-sum-indices")!;
+    expect(payload).not.toContain(internal.referenceCommit);
+    expect(payload).not.toContain(internal.hiddenTestFile);
+    expect(payload).not.toContain(internal.hints[0].text);
+  });
+
   it("recommends the easiest unfinished challenge and returns none when all are complete", async () => {
     const recommendation = await recommendNextChallenge(["optimistic-rollback"]);
     expect(recommendation?.id).toBe("persist-filter");
@@ -62,7 +80,7 @@ describe("challenge projection", () => {
   });
 
   it("defaults project identity for legacy challenge and session records", async () => {
-    const [challenge] = await listChallenges();
+    const challenge = (await listChallenges()).find((item) => item.projectId === "task-manager")!;
     expect(challengeSchema.parse({ ...challenge, projectId: undefined }).projectId).toBe("task-manager");
     const legacy = { ...sessionRecord(randomUUID(), "planning"), projectId: undefined };
     expect(sessionSchema.parse(legacy).projectId).toBe("task-manager");

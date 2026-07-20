@@ -6,6 +6,7 @@ import { promisify } from "node:util";
 import { afterEach, describe, expect, it } from "vitest";
 import { GET as listProjects, POST as addProject } from "@/app/api/projects/route";
 import { projectsRegistryPath } from "@/lib/paths";
+import { listProjects as listRegisteredProjects } from "@/lib/projects";
 
 const execFile = promisify(execFileCallback);
 const temporaryDirectories: string[] = [];
@@ -43,6 +44,11 @@ afterEach(async () => {
 });
 
 describe("linked project registry", () => {
+  it("lists Kata Lab before the retained task-manager practice project", async () => {
+    const projects = await listRegisteredProjects();
+    expect(projects.slice(0, 2).map((project) => project.id)).toEqual(["kata-lab", "task-manager"]);
+  });
+
   it("round-trips a valid npm Vitest repository through the API", async () => {
     const original = await fs.readFile(projectsRegistryPath, "utf8").catch(() => null);
     const directory = await makeGitRepository({

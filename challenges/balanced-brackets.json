@@ -1,0 +1,59 @@
+{
+  "mode": "replay",
+  "projectId": "kata-lab",
+  "libraryOrder": 3,
+  "testCommand": "test",
+  "hiddenTestCommand": "test:challenge",
+  "hiddenTestFile": "challenges/tests/kata-lab/balanced-brackets.challenge.test.ts",
+  "baseCommit": "5e8551c186f7bb7f871b8f3864586158f107ce9d",
+  "referenceCommit": "6de649488a90896c2ed7c52e27f0f97d4062a830",
+  "id": "balanced-brackets",
+  "title": "Validate balanced brackets",
+  "difficulty": 3,
+  "estimatedTime": "15-20 min",
+  "learningObjectives": [
+    "stacks",
+    "parsing",
+    "state tracking"
+  ],
+  "planQuestions": [
+    "What information must remain available when a closing bracket appears?",
+    "How can nesting order be represented?",
+    "Which crossed example would prove the order matters?"
+  ],
+  "hints": [
+    {
+      "level": 1,
+      "text": "A closing bracket must match the latest unmatched opening bracket.",
+      "concept": "Nested pairs are resolved last-opened, first-closed."
+    },
+    {
+      "level": 2,
+      "text": "What small collection naturally gives back the most recent opening bracket?",
+      "concept": "The order of unresolved openers matters.",
+      "lookAt": "The state tracked while scanning each character."
+    },
+    {
+      "level": 3,
+      "text": "Inspect the function's single numeric depth counter.",
+      "concept": "One depth value cannot remember bracket kinds.",
+      "lookAt": "The loop that handles opening and closing characters.",
+      "testIdea": "Compare a valid nested string with the crossed sequence ([)]."
+    }
+  ],
+  "explainBackQuestion": "Why does matching brackets require remembering order as well as quantity?",
+  "brief": {
+    "story": "A note formatter accepts ordinary text with grouping markers. It must reject crossed pairs such as ([)] while allowing words and punctuation around valid groups.",
+    "desiredBehavior": "Return whether parentheses, square brackets, and braces are correctly paired and nested, ignoring other characters.",
+    "acceptanceCriteria": [
+      "All three bracket kinds are supported.",
+      "A closing bracket must match the most recent opener.",
+      "Non-bracket characters are ignored."
+    ],
+    "constraints": [
+      "Work in the TypeScript Kata Lab library.",
+      "Return a boolean without changing the input text."
+    ],
+    "example": "\"read [notes] (now)\" returns true; \"([)]\" returns false."
+  }
+}

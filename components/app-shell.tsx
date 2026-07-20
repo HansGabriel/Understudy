@@ -22,7 +22,7 @@ type RecentPayload = {
   total: number;
 };
 
-const defaultProject: ProjectSummary = { id: "task-manager", name: "task-manager", mode: "built-in", detected: { packageManager: "npm", testCommand: "test" }, consent: true };
+const defaultProject: ProjectSummary = { id: "kata-lab", name: "Kata Lab", mode: "built-in", detected: { packageManager: "npm", testCommand: "test" }, consent: true };
 const selectedProjectStorageKey = "understudy:selected-project";
 
 const stageLabel = {
@@ -125,7 +125,7 @@ export function AppShell({ active, children }: AppShellProps) {
             <div>
               <p className="eyebrow">Practice project</p>
               <div className="project-select"><label htmlFor="project-picker">Practice project</label><select id="project-picker" value={selectedProjectId} onChange={(event) => selectProject(event.target.value)}>{projects.map((project) => <option value={project.id} key={project.id}>{project.name}</option>)}</select><span>{projects.find((project) => project.id === selectedProjectId)?.mode === "linked" ? "linked local repository" : "bundled practice project"}</span></div>
-              <p className="fixture-note">Improve it in your own working copy.</p>
+              <p className="fixture-note">{selectedProjectId === "kata-lab" ? "A bundled TypeScript algorithm practice project." : "Improve it in your own working copy."}</p>
               <button className="project-roadmap" type="button" onClick={() => { setShowProjectForm((open) => !open); setProjectError(""); }}>
                 <strong>{showProjectForm ? "Close project loader" : "Load a different project"}</strong>
                 <span>Add a local npm + Vitest/Jest repository for the project library.</span>

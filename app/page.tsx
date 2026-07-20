@@ -28,7 +28,7 @@ type RecentPayload = {
 };
 
 const selectedProjectStorageKey = "understudy:selected-project";
-const defaultProject: ProjectSummary = { id: "task-manager", name: "task-manager", mode: "built-in", detected: { packageManager: "npm", testCommand: "test" }, consent: true };
+const defaultProject: ProjectSummary = { id: "kata-lab", name: "Kata Lab", mode: "built-in", detected: { packageManager: "npm", testCommand: "test" }, consent: true };
 
 function conciseActionError(value: unknown, fallback: string) {
   const message = value instanceof Error ? value.message : fallback;
@@ -53,7 +53,7 @@ export default function LibraryPage() {
   const entries: LibraryEntry[] = visibleChallenges.length
     ? [
         ...visibleChallenges.map((challenge) => ({ kind: "challenge" as const, challenge })),
-        ...(selectedProject.mode === "built-in" ? comingSoon.map((entry) => ({ kind: "coming-soon" as const, ...entry })) : []),
+        ...(selectedProject.id === "task-manager" ? comingSoon.map((entry) => ({ kind: "coming-soon" as const, ...entry })) : []),
       ]
     : [];
 
@@ -131,7 +131,7 @@ export default function LibraryPage() {
   return (
     <AppShell active="library">
       <header className="page-head library-head">
-        <div><p className="eyebrow">{selectedProject.id === "task-manager" ? "Two replays" : `${selectedProject.name} / tasks`}</p><h1>Learn from real history: Understudy drops you at the commit before a meaningful change and asks you to rebuild it yourself.</h1><p>Rebuild it in your own editor. Tests decide when it works.</p></div>
+        <div><p className="eyebrow">{selectedProject.id === "kata-lab" ? "Four kata replays / easy to medium" : selectedProject.id === "task-manager" ? "Two task-manager replays" : `${selectedProject.name} / tasks`}</p><h1>Learn from real history: Understudy drops you at the commit before a meaningful change and asks you to rebuild it yourself.</h1><p>{selectedProject.id === "kata-lab" ? "Practice small algorithm changes in your own editor. Tests decide when the behavior is right." : "Rebuild it in your own editor. Tests decide when it works."}</p></div>
       </header>
       <section className="page-content">
         {!hasSessions ? <details className="how-it-works" open>

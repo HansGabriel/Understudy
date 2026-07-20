@@ -4,7 +4,7 @@ import path from "node:path";
 import { promisify } from "node:util";
 import { assertFixtureAvailable, FixtureUnavailableError } from "@/lib/fixture";
 import { getProject, linkedProjectPath } from "@/lib/projects";
-import { assertAbsoluteLocalPath, assertInside, fixtureBundlePath, fixtureRepoPath, runtimeRoot, sessionDirectory, sessionWorktreePath, sessionsRoot } from "@/lib/paths";
+import { assertAbsoluteLocalPath, assertInside, builtInFixturePaths, runtimeRoot, sessionDirectory, sessionWorktreePath, sessionsRoot, type BuiltInFixtureId } from "@/lib/paths";
 import { installProjectDependencies } from "@/lib/test-runner";
 import { projectVariationDirectory } from "@/lib/project-cache";
 
@@ -33,33 +33,39 @@ export async function git(args: string[], cwd = runtimeRoot) {
   }
 }
 
-export async function ensureFixture(...requiredCommits: string[]) {
-  if (existsSync(path.join(fixtureRepoPath, ".git"))) {
-    const missingCommits = await findMissingCommits(fixtureRepoPath, requiredCommits);
+export async function ensureFixtureForProject(projectId: BuiltInFixtureId, ...requiredCommits: string[]) {
+  const { bundlePath, repoPath } = builtInFixturePaths(projectId);
+  if (existsSync(path.join(repoPath, ".git"))) {
+    const missingCommits = await findMissingCommits(repoPath, requiredCommits);
     if (missingCommits.length) {
       try {
         // The bundle can be rebuilt while an older clone remains under
         // runtime/. Refresh objects before creating a worktree or showing a
         // reference diff, otherwise Git reports an opaque "invalid reference".
-        await git(["-C", fixtureRepoPath, "fetch", "--prune", "origin"]);
-      } catch {
+        await git(["-C", repoPath, "fetch", "--prune", "origin"]);
+      } catch (error) {
+        console.warn(`Understudy: could not refresh ${projectId} fixture clone.`, error);
         throw new FixtureUnavailableError();
       }
-      await fetchVariationBundles(fixtureRepoPath);
-      if ((await findMissingCommits(fixtureRepoPath, missingCommits)).length) {
+      if (projectId === "task-manager") await fetchVariationBundles(repoPath);
+      if ((await findMissingCommits(repoPath, missingCommits)).length) {
         throw new FixtureUnavailableError();
       }
     }
-    return fixtureRepoPath;
+    return repoPath;
   }
-  assertFixtureAvailable();
+  assertFixtureAvailable(projectId);
   await fs.mkdir(runtimeRoot, { recursive: true });
-  await git(["clone", fixtureBundlePath, fixtureRepoPath], runtimeRoot);
-  await fetchVariationBundles(fixtureRepoPath);
-  if ((await findMissingCommits(fixtureRepoPath, requiredCommits)).length) {
+  await git(["clone", bundlePath, repoPath], runtimeRoot);
+  if (projectId === "task-manager") await fetchVariationBundles(repoPath);
+  if ((await findMissingCommits(repoPath, requiredCommits)).length) {
     throw new FixtureUnavailableError();
   }
-  return fixtureRepoPath;
+  return repoPath;
+}
+
+export async function ensureFixture(...requiredCommits: string[]) {
+  return ensureFixtureForProject("task-manager", ...requiredCommits);
 }
 
 async function fetchVariationBundles(fixture: string) {
@@ -90,6 +96,8 @@ async function findMissingCommits(fixture: string, commits: string[]) {
 export async function createWorktree(sessionId: string, baseCommit: string, projectId = "task-manager") {
   const source = projectId === "task-manager"
     ? await ensureFixture(baseCommit)
+    : projectId === "kata-lab"
+      ? await ensureFixtureForProject("kata-lab", baseCommit)
     : linkedProjectPath(await getProject(projectId));
   const worktree = sessionWorktreePath(sessionId);
   const sessionDir = sessionDirectory(sessionId);
@@ -110,6 +118,8 @@ export async function removeWorktree(sessionId: string, projectId = "task-manage
   try {
     const source = projectId === "task-manager"
       ? await ensureFixture()
+      : projectId === "kata-lab"
+        ? await ensureFixtureForProject("kata-lab")
       : assertAbsoluteLocalPath(linkedProjectPath(await getProject(projectId)));
     if (existsSync(worktree)) await git(["-C", source, "worktree", "remove", "--force", worktree]);
     await git(["-C", source, "worktree", "prune"]);
@@ -152,6 +162,8 @@ export async function diffDetails(worktreePath: string): Promise<DiffDetails> {
 export async function referenceDiff(baseCommit: string, referenceCommit: string, projectId = "task-manager"): Promise<ReferenceDiff> {
   const fixture = projectId === "task-manager"
     ? await ensureFixture(baseCommit, referenceCommit)
+    : projectId === "kata-lab"
+      ? await ensureFixtureForProject("kata-lab", baseCommit, referenceCommit)
     : assertAbsoluteLocalPath(linkedProjectPath(await getProject(projectId)));
   const [patch, names] = await Promise.all([
     git(["-C", fixture, "diff", "--no-ext-diff", "--unified=3", baseCommit, referenceCommit, "--"]),

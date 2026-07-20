@@ -1,0 +1,59 @@
+{
+  "mode": "replay",
+  "projectId": "kata-lab",
+  "libraryOrder": 4,
+  "testCommand": "test",
+  "hiddenTestCommand": "test:challenge",
+  "hiddenTestFile": "challenges/tests/kata-lab/two-sum-indices.challenge.test.ts",
+  "baseCommit": "6de649488a90896c2ed7c52e27f0f97d4062a830",
+  "referenceCommit": "c396416a474244c0adfb75dd309a94963d45c744",
+  "id": "two-sum-indices",
+  "title": "Find two-sum indices",
+  "difficulty": 3,
+  "estimatedTime": "15-20 min",
+  "learningObjectives": [
+    "arrays",
+    "lookups",
+    "constraints"
+  ],
+  "planQuestions": [
+    "What makes two indices different even when their values match?",
+    "What information from earlier values could make a later match fast?",
+    "Which input proves a single number cannot pair with itself?"
+  ],
+  "hints": [
+    {
+      "level": 1,
+      "text": "The two items must occupy different positions in the array.",
+      "concept": "A matching value is not enough if it comes from the same item."
+    },
+    {
+      "level": 2,
+      "text": "What could you remember about values already seen while moving left to right?",
+      "concept": "Earlier values can be recorded with their positions.",
+      "lookAt": "The partner lookup inside the array loop."
+    },
+    {
+      "level": 3,
+      "text": "Inspect how the current lookup behaves when the target is twice the current value.",
+      "concept": "A lookup can accidentally return the current index.",
+      "lookAt": "The function that finds a partner index.",
+      "testIdea": "Try [3, 4] with target 6, then [3, 3] with target 6."
+    }
+  ],
+  "explainBackQuestion": "Why must a two-sum lookup distinguish a matching value from a second array item?",
+  "brief": {
+    "story": "A budget helper looks for two different entries that add to a target. One entry cannot be used twice just because its value would complete the sum.",
+    "desiredBehavior": "Return the indices of two distinct values that add to the target, or null when no such pair exists.",
+    "acceptanceCriteria": [
+      "Returned indices refer to two different array positions.",
+      "A repeated value may form a pair only when it appears twice.",
+      "Return null when no valid pair exists."
+    ],
+    "constraints": [
+      "Work in the TypeScript Kata Lab library.",
+      "Keep the first valid pair in left-to-right discovery order."
+    ],
+    "example": "[3, 3] with target 6 returns [0, 1]; [3, 4] with target 6 returns null."
+  }
+}

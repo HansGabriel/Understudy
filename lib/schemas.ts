@@ -17,6 +17,7 @@ export const hintContentSchema = z.object({
 export const challengeSchema = z.object({
   id: z.string().regex(/^[a-z0-9-]+$/),
   projectId: z.string().regex(/^[a-z0-9-]+$/).default("task-manager"),
+  libraryOrder: z.number().int().min(0).max(10_000).default(100),
   drafted: z.boolean().default(false),
   draftedBy: z.enum(["ai", "learner"]).optional(),
   mode: z.literal("replay"),

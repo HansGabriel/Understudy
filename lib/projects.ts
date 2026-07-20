@@ -12,6 +12,14 @@ const linkedProjectSchema = projectSummarySchema.extend({ mode: z.literal("linke
 const registrySchema = z.array(linkedProjectSchema);
 const registryLock = new Map<string, Promise<void>>();
 
+export const kataLabProject: ProjectSummary = {
+  id: "kata-lab",
+  name: "Kata Lab",
+  mode: "built-in",
+  detected: { packageManager: "npm", testCommand: "test" },
+  consent: true,
+};
+
 export const builtInProject: ProjectSummary = {
   id: "task-manager",
   name: "task-manager",
@@ -19,6 +27,8 @@ export const builtInProject: ProjectSummary = {
   detected: { packageManager: "npm", testCommand: "test" },
   consent: true,
 };
+
+export const builtInProjects: ProjectSummary[] = [kataLabProject, builtInProject];
 
 function registryPath() {
   return assertInside(runtimeRoot, projectsRegistryPath);
@@ -113,7 +123,7 @@ async function inspectLinkedProject(inputPath: string): Promise<ProjectSummary> 
 }
 
 export async function listProjects(): Promise<ProjectSummary[]> {
-  return [builtInProject, ...(await readLinkedProjects())];
+  return [...builtInProjects, ...(await readLinkedProjects())];
 }
 
 export async function getProject(projectId: string) {
