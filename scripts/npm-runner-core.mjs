@@ -3,7 +3,13 @@ import path from "node:path";
 
 function npmCliPath() {
   const candidates = new Set();
-  if (process.env.npm_execpath) candidates.add(path.resolve(process.cwd(), process.env.npm_execpath));
+  // npm_execpath is not necessarily npm's JavaScript entry point. For example,
+  // when this app is launched through pnpm on Windows it can be `pnpm.exe`.
+  // This runner deliberately invokes Node with a JS file, so passing that native
+  // executable as the first argument makes Node try to parse its `MZ` header.
+  if (process.env.npm_execpath && path.basename(process.env.npm_execpath).toLowerCase() === "npm-cli.js") {
+    candidates.add(path.resolve(process.cwd(), process.env.npm_execpath));
+  }
   const nodeDirectory = path.dirname(process.execPath);
   candidates.add(path.join(nodeDirectory, "node_modules", "npm", "bin", "npm-cli.js"));
   candidates.add(path.resolve(nodeDirectory, "..", "lib", "node_modules", "npm", "bin", "npm-cli.js"));

@@ -6,6 +6,7 @@ import { useRouter } from "next/navigation";
 import { AppShell } from "@/components/app-shell";
 import { CoachingSourceChip } from "@/components/coaching-source";
 import { SessionTimeline } from "@/components/session-timeline";
+import { buildReportSummary } from "@/lib/report-summary";
 import type { DiffDetails, PublicChallenge, ReferenceDiff, SessionRecord } from "@/lib/schemas";
 
 type ReportPayload = {
@@ -55,6 +56,14 @@ export default function ReportClient({ sessionId, sample = false }: { sessionId:
   const attempt = session?.attempts.at(-1);
   const allPassed = Boolean(attempt?.normalSuite.passed && attempt?.behavioral.passed);
   const hasReferenceReveal = session?.status === "completed" && payload?.referenceDiff && payload.learnerDiff;
+  const narrative = session && payload ? buildReportSummary({
+    attempts: session.attempts,
+    hints: session.hints,
+    coachThread: session.coachThread,
+    outline: session.outline,
+    plan: session.plan,
+    desiredBehavior: payload.challenge.brief.desiredBehavior,
+  }) : null;
 
   async function practiceAgain() {
     if (!payload || busy) return;
@@ -92,7 +101,12 @@ export default function ReportClient({ sessionId, sample = false }: { sessionId:
       {error ? <p className="notice error-notice">{error}</p> : null}
       {!payload ? <section className="page-content"><div className="card plan-card"><p className="eyebrow">Loading learning evidence</p><h2>Building your mastery report...</h2></div></section> : <section className="page-content">
         <div className="report-topline"><span>REPLAY / session #{session!.id.slice(0, 5)}</span><span>attempts {session!.attempts.length} / hints {session!.hints.length} of 3</span></div>
-        <header className="page-head"><div><h1>Mastery Report</h1><p>{payload.challenge.title}</p></div><div className="report-header-meta"><span className={`difficulty-chip difficulty-${payload.challenge.difficulty}`} aria-label={`${payload.challenge.difficulty} out of 5 difficulty`}>{"●".repeat(payload.challenge.difficulty)}<span>{"●".repeat(5 - payload.challenge.difficulty)}</span></span>{sample ? <span className="sample-badge">Sample session / read-only</span> : null}</div></header>
+        <header className="page-head"><div><h1>Mastery Report</h1><p>{payload.challenge.title} — evidence from this replay, not a certification.</p></div><div className="report-header-meta"><span className={`difficulty-chip difficulty-${payload.challenge.difficulty}`} aria-label={`${payload.challenge.difficulty} out of 5 difficulty`}>{"●".repeat(payload.challenge.difficulty)}<span>{"●".repeat(5 - payload.challenge.difficulty)}</span></span>{sample ? <span className="sample-badge">Sample session / read-only</span> : null}</div></header>
+        {narrative ? <section className={`card report-summary ${allPassed ? "passed" : "in-progress"}`}>
+          <p className="eyebrow">Session story / evidence from this replay</p>
+          <p><strong>{narrative.verdict}</strong></p>
+          <p>{[narrative.signal, narrative.support, narrative.closing].filter(Boolean).join(" ")}</p>
+        </section> : null}
         <div className="signal-panels">
           <section className="card signal-panel"><p className="eyebrow">Engineering outcome</p><h2>{allPassed ? "Passed" : "In progress"}</h2><p>{allPassed ? "all required checks green" : "complete the required checks"}</p><div className="metric-row"><span>project&apos;s own tests <small>normal suite</small></span><strong>{attempt?.normalSuite.passed ? "passed" : "not passed"}</strong></div><div className="metric-row"><span>edge-case check <small>behavioral test</small></span><strong>{attempt?.behavioral.passed ? "passed" : "not passed"}</strong></div><div className="metric-row"><span>regressions</span><strong>{attempt?.normalSuite.passed ? "none" : "review needed"}</strong></div></section>
           <section className="card signal-panel guided"><p className="eyebrow">Independence</p><h2>{session!.hints.length || session!.coachThread.some((entry) => entry.role === "learner") || session!.outline ? "Guided" : "Independent"}</h2><p>{session!.hints.length ? `${session!.hints.length} hint${session!.hints.length === 1 ? "" : "s"} used as context, not a penalty` : session!.coachThread.some((entry) => entry.role === "learner") ? "Coach support used as context, not a penalty" : session!.outline ? "An approach outline was used as context, not a penalty" : "No hints or coach messages were needed"}</p>{[1, 2, 3].map((level) => <div className="metric-row" key={level}><span>L{level} / {level === 1 ? "concept nudge" : level === 2 ? "guiding question" : "location pointer"}</span><strong>{session!.hints.some((hint) => hint.level === level) ? "used" : "not needed"}</strong></div>)}<div className="metric-row"><span>approach outline</span><strong>{session!.outline ? "used" : "not used"}</strong></div><div className="metric-row"><span>coach messages</span><strong>{session!.coachThread.filter((entry) => entry.role === "learner").length}</strong></div></section>
