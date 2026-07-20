@@ -6,7 +6,7 @@ import { diffDetails } from "@/lib/git";
 import { appendTimeline, updateSession } from "@/lib/sessions";
 import type { CoachingResult } from "@/lib/schemas";
 import path from "node:path";
-import { challengesRoot } from "@/lib/paths";
+import { assertInside, challengesRoot, projectRoot } from "@/lib/paths";
 
 export const runtime = "nodejs";
 
@@ -24,7 +24,7 @@ export async function POST(_request: Request, context: RouteContext<"/api/sessio
           : { ...normalSuite, passed: false, exitCode: normalSuite.exitCode === 0 ? 1 : normalSuite.exitCode, output: `${normalSuite.output}\n\nNo learner changes detected. Make a change in the working copy before running a full-suite replay.`, failures: ["No learner changes detected"] }
         : challenge.hiddenTestFiles.length
           ? await runHiddenTestFiles(session.worktreePath, challenge.hiddenTestFiles, challenge.hiddenTestCommand)
-          : await runHiddenTest(session.worktreePath, path.join(challengesRoot, "tests", `${challenge.id}.challenge.test.ts`));
+          : await runHiddenTest(session.worktreePath, assertInside(challengesRoot, path.resolve(projectRoot, challenge.hiddenTestFile)));
       session.attempts.push({ at: new Date().toISOString(), normalSuite, behavioral });
       appendTimeline(session, "attempt", { normalPassed: normalSuite.passed, behavioralPassed: behavioral.passed });
       if (normalSuite.passed && !behavioral.passed) {
