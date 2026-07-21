@@ -17,6 +17,7 @@ export async function POST(request: Request, context: RouteContext<"/api/session
       const lastOutput = current.attempts.at(-1)?.behavioral.output;
       const coaching = await structuredHint(level, challenge, lastOutput);
       current.hints.push({ level, at: new Date().toISOString(), text: coaching.text, aiSource: coaching.source, ...coaching.hint });
+      current.lastCoaching = null;
       return appendTimeline(current, "hint", { level }, coaching.source);
     });
     return Response.json({ hint: session.hints.at(-1), used: session.hints.length });

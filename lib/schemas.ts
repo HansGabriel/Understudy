@@ -1,4 +1,5 @@
 import { z } from "zod";
+import { MIN_INPUT_LENGTH } from "@/lib/input";
 
 const briefSchema = z.object({
   story: z.string().trim().min(1).max(1200).optional(),
@@ -214,16 +215,16 @@ export const createSessionInputSchema = z.object({ challengeId: z.string().regex
 export const sessionIdSchema = z.string().uuid();
 export const projectIdSchema = z.string().regex(/^[a-z0-9-]+$/);
 export const projectCommitInputSchema = z.object({ sha: z.string().regex(/^[0-9a-f]{7,40}$/i) });
-export const projectReplayInputSchema = projectCommitInputSchema.extend({ guidance: z.string().trim().min(3).max(600).optional() });
-export const projectKataBoardInputSchema = z.object({ guidance: z.string().trim().min(3).max(600).optional() });
-export const projectKataRegenerateInputSchema = z.object({ sha: z.string().regex(/^[0-9a-f]{7,40}$/i), guidance: z.string().trim().min(3).max(600).optional() });
-export const planInputSchema = z.object({ answers: z.array(z.string().trim().min(3).max(800)).length(3) });
+export const projectReplayInputSchema = projectCommitInputSchema.extend({ guidance: z.string().trim().min(MIN_INPUT_LENGTH).max(600).optional() });
+export const projectKataBoardInputSchema = z.object({ guidance: z.string().trim().min(MIN_INPUT_LENGTH).max(600).optional() });
+export const projectKataRegenerateInputSchema = z.object({ sha: z.string().regex(/^[0-9a-f]{7,40}$/i), guidance: z.string().trim().min(MIN_INPUT_LENGTH).max(600).optional() });
+export const planInputSchema = z.object({ answers: z.array(z.string().trim().min(MIN_INPUT_LENGTH).max(800)).length(3) });
 export const hintInputSchema = z.object({ level: z.number().int().min(1).max(3) });
-export const explainInputSchema = z.object({ answer: z.string().trim().min(3).max(1600) });
-export const coachInputSchema = z.object({ message: z.string().trim().min(3).max(600) });
+export const explainInputSchema = z.object({ answer: z.string().trim().min(MIN_INPUT_LENGTH).max(1600) });
+export const coachInputSchema = z.object({ message: z.string().trim().min(MIN_INPUT_LENGTH).max(600) });
 export const projectPathInputSchema = z.object({ path: z.string().trim().min(1).max(4096), consent: z.boolean().default(false) });
 export const variationInputSchema = z.object({ challengeId: z.string().regex(/^[a-z0-9-]+$/) });
-export const variationGuidanceInputSchema = variationInputSchema.extend({ guidance: z.string().trim().min(3).max(600).optional() });
+export const variationGuidanceInputSchema = variationInputSchema.extend({ guidance: z.string().trim().min(MIN_INPUT_LENGTH).max(600).optional() });
 
 export type Challenge = z.infer<typeof challengeSchema>;
 export type PublicChallenge = z.infer<typeof publicChallengeSchema>;

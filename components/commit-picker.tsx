@@ -2,6 +2,7 @@
 
 import { useCallback, useEffect, useRef, useState } from "react";
 import type { ChallengeDraft, ProjectCommit, ProjectKataTask, PublicChallenge } from "@/lib/schemas";
+import { MIN_INPUT_LENGTH } from "@/lib/input";
 import { tagTone } from "@/lib/tag-tone";
 
 type CommitPickerProps = {
@@ -56,8 +57,8 @@ export function CommitPicker({ projectId, onChallengeCreated }: CommitPickerProp
 
   async function draftTasks() {
     const nextGuidance = guidance.trim();
-    if (nextGuidance && nextGuidance.length < 3) {
-      setError("Describe the practice interest in at least 3 characters, or leave it blank for the default task board.");
+    if (nextGuidance && nextGuidance.length < MIN_INPUT_LENGTH) {
+      setError(`Describe the practice interest in at least ${MIN_INPUT_LENGTH} characters, or leave it blank for the default task board.`);
       return;
     }
     setBusy("draft");
