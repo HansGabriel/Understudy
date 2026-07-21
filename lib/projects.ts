@@ -74,7 +74,7 @@ async function runGit(directory: string, args: string[]) {
     const result = await execFile("git", ["-C", directory, ...args], { windowsHide: true, timeout: 15_000, maxBuffer: 200_000 });
     return result.stdout.trim();
   } catch {
-    throw new Error("That path is not a Git repository. v1 supports npm + Vitest/Jest repositories.");
+    throw new Error("That path is not a Git repository. Understudy links Git repositories that can install with npm and run a test script.");
   }
 }
 
@@ -87,29 +87,24 @@ async function inspectLinkedProject(inputPath: string): Promise<ProjectSummary> 
     throw new Error("That local path does not exist. Choose an absolute path to a repository.");
   }
   const stat = await fs.stat(realPath);
-  if (!stat.isDirectory()) throw new Error("The selected path is not a directory. v1 supports npm + Vitest/Jest repositories.");
+  if (!stat.isDirectory()) throw new Error("The selected path is not a directory. Understudy links Git repositories that can install with npm and run a test script.");
   const repositoryRoot = path.resolve(await runGit(realPath, ["rev-parse", "--show-toplevel"]));
-  let packageJson: { name?: unknown; packageManager?: unknown; scripts?: Record<string, unknown>; devDependencies?: Record<string, unknown> };
+  let packageJson: { name?: unknown; scripts?: Record<string, unknown> };
   try {
     packageJson = JSON.parse(await fs.readFile(path.join(repositoryRoot, "package.json"), "utf8")) as typeof packageJson;
   } catch {
-    throw new Error("This Git repository is missing a valid package.json. v1 supports npm + Vitest/Jest repositories.");
+    throw new Error("This Git repository is missing a valid package.json.");
   }
-  const packageManager = typeof packageJson.packageManager === "string" ? packageJson.packageManager.split("@")[0] : "npm";
-  if (packageManager !== "npm") throw new Error("This repository uses a package manager other than npm. v1 supports npm + Vitest/Jest repositories.");
   const testCommand = packageJson.scripts?.test;
-  if (typeof testCommand !== "string" || !testCommand.trim()) throw new Error("package.json needs a test script. v1 supports npm + Vitest/Jest repositories.");
-  const devDependencies = packageJson.devDependencies ?? {};
-  const hasRunner = Object.keys(devDependencies).some((dependency) => dependency === "vitest" || dependency === "jest");
-  if (!hasRunner) throw new Error("package.json needs Vitest or Jest in devDependencies. v1 supports npm + Vitest/Jest repositories.");
+  if (typeof testCommand !== "string" || !testCommand.trim()) throw new Error("package.json needs a test script. Understudy can run any npm test command, but it needs one to verify a replay.");
   const lockfile = path.join(repositoryRoot, "package-lock.json");
   try {
     await fs.access(lockfile);
   } catch {
-    throw new Error("v1 needs a committed package-lock.json (npm ci). v1 supports npm + Vitest/Jest repositories.");
+    throw new Error("Understudy needs a committed package-lock.json so it can install this project with npm ci.");
   }
   const trackedLockfile = await runGit(repositoryRoot, ["ls-files", "--error-unmatch", "package-lock.json"]).catch(() => "");
-  if (!trackedLockfile.trim()) throw new Error("v1 needs a committed package-lock.json (npm ci). v1 supports npm + Vitest/Jest repositories.");
+  if (!trackedLockfile.trim()) throw new Error("Understudy needs package-lock.json committed to Git so it can install this project with npm ci.");
   const slug = path.basename(repositoryRoot).toLowerCase().replace(/[^a-z0-9]+/g, "-").replace(/^-|-$/g, "") || "project";
   const id = `linked-${slug}-${createHash("sha1").update(repositoryRoot).digest("hex").slice(0, 8)}`;
   return {

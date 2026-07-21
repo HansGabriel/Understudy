@@ -2,7 +2,7 @@
 
 **Learn from real history: Understudy drops you at the commit before a meaningful change and asks you to rebuild it yourself.**
 
-Understudy is a local, desktop-first learning lab for developers. It includes **Kata Lab**, a bundled TypeScript project with four small algorithm replays, alongside the task-manager practice project. Each replay gives you a copy from just before a real change landed, then asks you to rebuild the behavior in your own editor. That copy is an isolated Git worktree; Understudy calls it **your working copy**. You can also link a local npm + Vitest/Jest repository, choose one of its recent commits, and draft a replay from that history.
+Understudy is a local, desktop-first learning lab for developers. It includes **Kata Lab**, a bundled TypeScript project with four small algorithm replays, alongside the task-manager practice project. Each replay gives you a copy from just before a real change landed, then asks you to rebuild the behavior in your own editor. That copy is an isolated Git worktree; Understudy calls it **your working copy**. You can also link a local Git repository that installs with npm and has a `test` script, choose one of its recent commits, and draft a replay from that history.
 
 ## Run locally
 
@@ -71,4 +71,4 @@ Codex accelerated the app's implementation, fixture history authoring, test hard
 
 ## Deliberate boundaries
 
-Understudy ships with two bundled TypeScript fixture repositories: Kata Lab has four curated algorithm replays, while task-manager has two data-layer replays. It also supports linking a local npm + Vitest/Jest repository and choosing recent commits as an early project-library path; linked challenges are user-owned and run tests on the user's machine. It does not offer accounts, cloud sync, in-browser coding, XP, rankings, or anti-cheat.
+Understudy ships with two bundled TypeScript fixture repositories: Kata Lab has four curated algorithm replays, while task-manager has two data-layer replays. It also supports linking a local Git repository that installs with npm, has a committed `package-lock.json`, and defines a `test` script; linked challenges are user-owned and run tests on the user's machine. It does not offer accounts, cloud sync, in-browser coding, XP, rankings, or anti-cheat.

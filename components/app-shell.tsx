@@ -128,7 +128,7 @@ export function AppShell({ active, children }: AppShellProps) {
               <p className="fixture-note">{selectedProjectId === "kata-lab" ? "A bundled TypeScript algorithm practice project." : "Improve it in your own working copy."}</p>
               <button className="project-roadmap" type="button" onClick={() => { setShowProjectForm((open) => !open); setProjectError(""); }}>
                 <strong>{showProjectForm ? "Close project loader" : "Load a different project"}</strong>
-                <span>Add a local npm + Vitest/Jest repository for the project library.</span>
+                <span>Add a local Git project that installs with npm and has a test script.</span>
               </button>
               {showProjectForm ? <form className="project-import" onSubmit={addProject}><label htmlFor="project-path">Absolute local repository path</label><input id="project-path" value={projectPath} onChange={(event) => setProjectPath(event.target.value)} placeholder="C:\\work\\my-repo" autoComplete="off" /><label className="consent-check"><input type="checkbox" checked={projectConsent} onChange={(event) => setProjectConsent(event.target.checked)} required /> <span>I understand replays run this repository&apos;s own tests on my machine.</span></label>{projectError ? <small>{projectError}</small> : null}<button className="button secondary small" disabled={projectBusy || projectPath.trim().length < 1 || !projectConsent}>{projectBusy ? "Checking..." : "Add project"}</button></form> : null}
             </div>

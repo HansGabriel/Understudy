@@ -49,12 +49,11 @@ describe("linked project registry", () => {
     expect(projects.slice(0, 2).map((project) => project.id)).toEqual(["kata-lab", "task-manager"]);
   });
 
-  it("round-trips a valid npm Vitest repository through the API", async () => {
+  it("round-trips a valid npm repository through the API without requiring a specific test runner", async () => {
     const original = await fs.readFile(projectsRegistryPath, "utf8").catch(() => null);
     const directory = await makeGitRepository({
       name: "linked-demo",
-      scripts: { test: "vitest run" },
-      devDependencies: { vitest: "^4.0.0" },
+      scripts: { test: "node --test" },
     });
     try {
       const created = await postProject(directory);
@@ -88,11 +87,18 @@ describe("linked project registry", () => {
     expect((await response.json()).error).toMatch(/package\.json/i);
   });
 
-  it("rejects repositories without Vitest or Jest", async () => {
-    const directory = await makeGitRepository({ name: "unsupported", scripts: { test: "mocha" }, devDependencies: { mocha: "^10.0.0" } });
+  it("accepts any npm test runner when a test script is present", async () => {
+    const directory = await makeGitRepository({ name: "mocha-project", scripts: { test: "mocha" }, devDependencies: { mocha: "^10.0.0" } });
+    const response = await postProject(directory);
+    expect(response.status).toBe(201);
+    expect(await response.json()).toMatchObject({ name: "mocha-project", detected: { packageManager: "npm", testCommand: "test" } });
+  });
+
+  it("rejects repositories without a test script", async () => {
+    const directory = await makeGitRepository({ name: "no-tests", scripts: {} });
     const response = await postProject(directory);
     expect(response.status).toBe(400);
-    expect((await response.json()).error).toMatch(/Vitest or Jest/i);
+    expect((await response.json()).error).toMatch(/test script/i);
   });
 
   it("rejects traversal-looking absolute paths", async () => {
